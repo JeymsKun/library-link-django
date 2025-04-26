@@ -1,0 +1,79 @@
+{% extends "base.html" %} {% load static %} {% block title %}Login | Library
+Link{% endblock %} {% block content %}
+<div
+  class="min-vh-100 bg-light d-flex flex-column px-3 py-4"
+  style="background-color: #e6f4fb !important"
+>
+  <div
+    class="flex-grow-1 d-flex align-items-center justify-content-center px-2 py-4"
+  >
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+          <div
+            class="card shadow border-0 rounded-4 p-4 d-flex flex-column flex-md-row align-items-center gap-4"
+          >
+            <!-- Logo Section -->
+            <div class="col text-center">
+              <img
+                src="{% static 'assets/official_logo.png' %}"
+                alt="Main Logo"
+                class="img-fluid"
+                style="max-width: 200px"
+              />
+            </div>
+
+            <!-- Login Buttons Section -->
+            <div class="col text-center px-2">
+              <h5 class="fw-bold mb-4 text-uppercase">LOGIN AS</h5>
+
+              <a
+                href="{% url 'login_staff' %}"
+                class="btn w-100 mb-3 rounded-pill fw-bold text-white"
+                style="max-width: 250px; background-color: #f1c40f"
+                onmouseover="this.style.backgroundColor='#d4ac0d'"
+                onmouseout="this.style.backgroundColor='#f1c40f'"
+              >
+                LIBRARY STAFF
+              </a>
+
+              <!-- User Button -->
+              <a
+                href="{% url 'login_user' %}"
+                class="btn w-100 rounded-pill fw-bold text-white"
+                style="max-width: 250px; background-color: #3498db"
+                onmouseover="this.style.backgroundColor='#2980b9'"
+                onmouseout="this.style.backgroundColor='#3498db'"
+              >
+                LIBRARY USER
+              </a>
+
+              <p class="mt-4" style="font-size: 0.85rem">
+                No account for User?
+                <a
+                  href="{% url 'user_signup' %}"
+                  class="fw-bold text-decoration-none"
+                  style="color: #3498db"
+                >
+                  Sign up here
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Links (moved to bottom) -->
+  <div
+    class="mt-4 d-flex flex-wrap justify-content-center gap-3 text-center small text-secondary"
+  >
+    <a class="text-decoration-none text-secondary">About Library Link</a>
+    <a class="text-decoration-none text-secondary">Privacy Policy</a>
+    <a class="text-decoration-none text-secondary">Terms of Service</a>
+    <a class="text-decoration-none text-secondary">Report an issue</a>
+    <a class="text-decoration-none text-secondary">Help</a>
+  </div>
+</div>
+{% endblock %}

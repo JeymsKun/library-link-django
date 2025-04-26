@@ -1,0 +1,291 @@
+{% extends "base.html" %} {% load static %} {% block title %} Library User
+Signup | Library Link {% endblock %} {% block content %}
+
+<style>
+  body {
+    background-color: #e6f4fb !important;
+  }
+
+  .form-floating-custom {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-floating-custom input {
+    border: none;
+    border-bottom: 2px solid #ced4da;
+    border-radius: 0;
+    background: transparent;
+    padding: 0.75rem 0 0.25rem 0;
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .form-floating-custom input:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: none;
+  }
+
+  .form-floating-custom label {
+    position: absolute;
+    top: 0.75rem;
+    left: 0;
+    font-size: 1rem;
+    color: #6c757d;
+    transition: 0.2s ease all;
+    pointer-events: none;
+  }
+
+  .form-floating-custom input:focus + label,
+  .form-floating-custom input:not(:placeholder-shown) + label {
+    top: -0.5rem;
+    font-size: 0.75rem;
+    color: #3498db;
+  }
+
+  .input-box {
+    background-color: #f8f9fa;
+    border: 2px solid #3498db;
+    border-radius: 1.5rem;
+    padding: 2rem;
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.05);
+  }
+
+  .btn-no-hover {
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .btn-no-hover:hover,
+  .btn-no-hover:focus,
+  .btn-no-hover:active {
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .signup-button-wrapper {
+    margin-top: 2rem;
+    text-align: center;
+  }
+
+  .signup-button-wrapper button {
+    width: 150px;
+    background-color: #3498db;
+    border: none;
+    border-radius: 50px;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    transition: none;
+  }
+
+  .signup-button-wrapper button:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .snackbar {
+    visibility: hidden;
+    background-color: #f44336;
+    color: #fff;
+    text-align: left;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    position: fixed;
+    z-index: 1050;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    font-size: 1rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 90%;
+  }
+
+  .snackbar.show {
+    visibility: visible;
+    animation: fadein 0.4s ease, fadeout 0.4s ease 2.6s;
+  }
+
+  @keyframes fadein {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  @keyframes fadeout {
+    from {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, 1rem);
+    }
+  }
+</style>
+
+<div class="d-flex align-items-center justify-content-center min-vh-100 px-3">
+  <div class="container">
+    <div class="row justify-content-center align-items-center">
+      <div class="col-md-8 col-lg-8">
+        <div class="card shadow-lg border-0 rounded-5 p-4">
+          <div class="row g-4 align-items-center">
+            <!-- Logo Section -->
+            <div class="col-md-6 text-center">
+              <img
+                src="{% static 'assets/official_logo.png' %}"
+                alt="Library Logo"
+                class="img-fluid"
+                style="max-width: 200px"
+              />
+            </div>
+
+            <!-- Signup Form Section -->
+            <div class="col-md-6">
+              <h5 class="text-center fw-bold mb-4">LIBRARY USER SIGNUP</h5>
+
+              <!-- Snackbar for Error Messages -->
+              {% if messages %}
+              <div id="snackbar" class="snackbar show">
+                {% for message in messages %}
+                <span>{{ message }}</span>
+                <button
+                  onclick="document.getElementById('snackbar').classList.remove('show')"
+                  class="btn-close btn-close-white ms-3"
+                  aria-label="Close"
+                  style="filter: brightness(0) invert(1)"
+                ></button>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              <form method="post" novalidate>
+                {% csrf_token %}
+
+                <div class="input-box mx-auto" style="max-width: 300px">
+                  <div class="form-floating-custom">
+                    <input
+                      type="text"
+                      id="full_name"
+                      name="full_name"
+                      placeholder=" "
+                      required
+                    />
+                    <label for="full_name">Full Name</label>
+                  </div>
+
+                  <div class="form-floating-custom">
+                    <input
+                      type="text"
+                      id="id_number"
+                      name="id_number"
+                      placeholder=" "
+                      required
+                      oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                    />
+                    <label for="id_number">ID Number (School/University)</label>
+                  </div>
+
+                  <div class="form-floating-custom">
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder=" "
+                      required
+                    />
+                    <label for="email">Email Address</label>
+                  </div>
+
+                  <div class="form-floating-custom position-relative">
+                    <input
+                      type="password"
+                      id="password"
+                      name="password"
+                      placeholder=" "
+                      required
+                    />
+                    <label for="password">Password</label>
+                    <button
+                      type="button"
+                      class="btn btn-no-hover border-0 position-absolute end-0 top-50 translate-middle-y btn-no-hover"
+                      style="z-index: 10; color: #6c757d"
+                      onclick="togglePassword('password', this)"
+                      aria-label="Toggle password visibility"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </div>
+
+                  <div class="form-floating-custom position-relative">
+                    <input
+                      type="password"
+                      id="confirm_password"
+                      name="confirm_password"
+                      placeholder=" "
+                      required
+                    />
+                    <label for="confirm_password">Confirm Password</label>
+                    <button
+                      type="button"
+                      class="btn btn-no-hover border-0 position-absolute end-0 top-50 translate-middle-y btn-no-hover"
+                      style="z-index: 10; color: #6c757d"
+                      onclick="togglePassword('confirm_password', this)"
+                      aria-label="Toggle password visibility"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="signup-button-wrapper">
+                  <button type="submit" class="btn btn-primary">
+                    REGISTER
+                  </button>
+                </div>
+              </form>
+
+              <script>
+                function togglePassword(inputId, button) {
+                  const input = document.getElementById(inputId);
+                  const icon = button.querySelector("i");
+
+                  if (input.type === "password") {
+                    input.type = "text";
+                    icon.classList.remove("bi-eye");
+                    icon.classList.add("bi-eye-slash");
+                  } else {
+                    input.type = "password";
+                    icon.classList.remove("bi-eye-slash");
+                    icon.classList.add("bi-eye");
+                  }
+                }
+
+                document.addEventListener("DOMContentLoaded", () => {
+                  const snackbar = document.getElementById("snackbar");
+                  if (snackbar) {
+                    setTimeout(() => {
+                      snackbar.classList.remove("show");
+                    }, 2000);
+                  }
+                });
+              </script>
+            </div>
+
+            <!-- End Signup Form Section -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
