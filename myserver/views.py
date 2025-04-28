@@ -56,6 +56,18 @@ def login_staff(request):
 def staff_home(request):
     return render(request, 'staff/home.html')
 
+@staff_required
+def staff_addbook(request):
+    return render(request, 'staff/addnewbook.html')
+
+@staff_required
+def staff_barcode(request):
+    return render(request, 'staff/barcode.html')
+
+@staff_required
+def staff_transaction(request):
+    return render(request, 'staff/transaction.html')
+
 def login_user(request):
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -119,7 +131,30 @@ def user_signup(request):
 
 @user_required
 def user_home(request):
+    # view = request.GET.get('view', 'grid')  
+    # book_list = []
+
+    # if view == 'favorites':
+    #     book_list = request.user.favorite_books.all() 
+    # elif view == 'returned':
+    #     book_list = request.user.returned_books.all()  
+    # else:
+    #     book_list = request.user.recently_viewed_books.all()
+
+    # context = {
+    #     'view': view,
+    #     'book_list': book_list,
+    # }
+    # return render(request, 'user/home.html', context)
     return render(request, 'user/home.html')
+
+@user_required
+def user_booking(request):
+    return render(request, 'user/bookingsummary.html')
+
+@user_required
+def user_library(request):
+    return render(request, 'user/library.html')
 
 @staff_required
 def logout_staff(request):
