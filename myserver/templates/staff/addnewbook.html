@@ -7,6 +7,386 @@
 
 <!-- Main content -->
 <div class="container-fluid mt-4" style="padding: 20px">
-  <h2>Add New Book</h2>
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8">
+      <h4 class="mb-4">
+        Fill in the details to add a new book to the library collection.
+      </h4>
+      <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Book Title -->
+        <div class="mb-3">
+          <label class="form-label">Book Title</label>
+          <input
+            type="text"
+            class="form-control"
+            id="title"
+            name="title"
+            required
+            placeholder="Enter book title"
+          />
+        </div>
+
+        <!-- Author -->
+        <div class="mb-3">
+          <label class="form-label">Author Name</label>
+          <input
+            type="text"
+            class="form-control"
+            id="author"
+            name="author"
+            required
+            placeholder="Enter author's name"
+          />
+        </div>
+
+        <!-- Genre -->
+        <div class="mb-3">
+          <label class="form-label" for="id_genres">Genre</label>
+          <select class="form-select" id="id_genres" name="genres" required>
+            <option value="">Select Genre</option>
+            {% for genre in genres %}
+              <option value="{{ genre.id }}" {% if genre.id == form.genres.value %}selected{% endif %}>
+                {{ genre.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- ISBN -->
+        <div class="mb-3">
+          <label class="form-label">ISBN Number (optional)</label>
+          <input
+            type="text"
+            class="form-control"
+            id="isbn"
+            name="isbn"
+            placeholder="e.g. 978-3-16-148410-0"
+          />
+        </div>
+
+        <!-- Publisher -->
+        <div class="mb-3">
+          <label class="form-label">Publisher</label>
+          <input
+            type="text"
+            class="form-control"
+            id="publisher"
+            name="publisher"
+            required
+            placeholder="Enter publisher name"
+          />
+        </div>
+
+        <!-- Published Date -->
+        <div class="mb-3">
+          <label class="form-label">Published Date</label>
+          <input
+            type="date"
+            class="form-control"
+            id="publishedDate"
+            name="published_date"
+          />
+        </div>
+
+        <!-- Copies -->
+        <div class="mb-3">
+          <label class="form-label">Number of Copies</label>
+          <input
+            type="number"
+            min="1"
+            class="form-control"
+            id="copies"
+            name="copies"
+            required
+            placeholder="e.g. 5"
+          />
+        </div>
+
+        <!-- Cover Image -->
+        <div class="mb-3">
+          <label class="form-label">Upload Book Cover</label>
+          <input
+            type="file"
+            class="form-control"
+            accept="image/*"
+            id="coverImage"
+            name="cover_image"
+            required
+            onchange="previewCoverImage(this)"
+          />
+          <div
+            id="coverPlaceholderContainer"
+            class="d-flex flex-column align-items-center justify-content-center mt-3 border rounded p-3 bg-white"
+            style="min-height: 130px; display: none"
+          >
+            <small class="text-muted text-center"
+              >Preview of the book cover.</small
+            >
+            <img
+              id="coverPreview"
+              class="img-fluid mt-2 mx-auto d-block"
+              style="max-height: 200px"
+            />
+          </div>
+        </div>
+
+        <!-- Extra Images -->
+        <div class="mb-3">
+          <label class="form-label">Upload Book Image(s) (optional)</label>
+          <input
+            type="file"
+            class="form-control"
+            id="imageInput"
+            name="extra_images"
+            accept="image/*"
+            multiple
+            onchange="handleImageUpload(this)"
+          />
+
+          <!-- Optional Image Placeholder Preview Box -->
+          <div
+            id="imagePlaceholderContainer"
+            class="d-flex flex-column justify-content-center align-items-center mt-3 border rounded p-3 bg-white text-center"
+            style="min-height: 130px; display: none"
+          >
+            <small class="text-muted">Maximum of 5 images allowed.</small>
+            <div id="imagePreview" class="row mt-2 w-100"></div>
+          </div>
+        </div>
+
+        <!-- Barcode -->
+        <div class="mb-3">
+          <label class="form-label">Generated Barcode:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="barcodeCode"
+            name="barcode_code"
+            readonly
+            placeholder="Barcode will be generated automatically from the title"
+          />
+          <input
+            type="file"
+            id="barcodeImageInput"
+            name="barcode_image"
+            style="display: none"
+          />
+          <div
+            id="barcodeContainer"
+            class="d-flex flex-column justify-content-center align-items-center mt-3 border rounded p-3 bg-white"
+            style="min-height: 130px"
+          >
+            <small id="barcodeStatus" class="text-muted text-center"
+              >No barcode generated.</small
+            >
+            <canvas
+              id="barcodeCanvas"
+              class="img-fluid mt-2"
+              style="height: 80px; max-width: 100%; display: none"
+            ></canvas>
+            <div class="mt-2" id="barcodeControls" style="display: none">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary me-2"
+                onclick="copyBarcode()"
+              >
+                Copy
+              </button>
+              <a
+                id="downloadBarcode"
+                class="btn btn-sm btn-outline-success"
+                download="barcode.png"
+                >Download PNG</a
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-4">
+          <label class="form-label">Description (optional)</label>
+          <textarea
+            class="form-control"
+            rows="3"
+            name="description"
+            placeholder="Write a brief description of the book"
+          ></textarea>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save Book</button>
+          <button type="reset" class="btn btn-secondary" onclick="clearForm()">
+            Clear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript for preview and barcode -->
+  <script>
+    let selectedImages = [];
+
+    function generateBarcode(code) {
+      const canvas = document.getElementById("barcodeCanvas");
+      const statusText = document.getElementById("barcodeStatus");
+      const controls = document.getElementById("barcodeControls");
+
+      if (!code || code.trim() === "") {
+        canvas.style.display = "none";
+        controls.style.display = "none";
+        statusText.textContent = "No barcode generated.";
+        return;
+      }
+
+      JsBarcode(canvas, code, {
+        format: "CODE128",
+        displayValue: true,
+        background: "#ffffff",
+        height: 80,
+      });
+
+      canvas.style.display = "block";
+      controls.style.display = "block";
+      statusText.textContent = "Barcode preview generated below.";
+
+      const pngUrl = canvas.toDataURL("image/png");
+      const downloadLink = document.getElementById("downloadBarcode");
+      downloadLink.href = pngUrl;
+
+      canvas.toBlob((blob) => {
+        const file = new File([blob], "barcode.png", { type: "image/png" });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.getElementById("barcodeImageInput").files = dataTransfer.files;
+      });
+    }
+
+    function copyBarcode() {
+      const barcode = document.getElementById("barcodeCode").value;
+      if (barcode) {
+        navigator.clipboard.writeText(barcode);
+        alert("Copied to clipboard!");
+      }
+    }
+
+    function clearForm() {
+      document.getElementById("coverPreview").style.display = "none";
+      document.getElementById("imagePreview").innerHTML = "";
+
+      const canvas = document.getElementById("barcodeCanvas");
+      canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+
+      document.getElementById("barcodeCode").value = "";
+      document.getElementById("barcodeContainer").style.display = "none";
+      document.getElementById("downloadBarcode").style.display = "none";
+      document.getElementById("imageInput").value = "";
+    }
+
+    document.getElementById("title").addEventListener("input", function () {
+      const title = this.value.trim();
+
+      if (title.length === 0) {
+        document.getElementById("barcodeCode").value = "";
+        document.getElementById("barcodeContainer").style.display = "none";
+        return;
+      }
+
+      const code = `${title.slice(0, 3).toUpperCase()}-${Date.now()}`;
+      document.getElementById("barcodeCode").value = code;
+      generateBarcode(code);
+    });
+
+    function previewCoverImage(input) {
+      const file = input.files[0];
+      const previewContainer = document.getElementById(
+        "coverPlaceholderContainer"
+      );
+      const previewImage = document.getElementById("coverPreview");
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          previewImage.src = e.target.result;
+          previewContainer.style.display = "flex";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewContainer.style.display = "none";
+      }
+    }
+
+    function handleImageUpload(input) {
+      const previewContainer = document.getElementById("imagePreview");
+      const placeholderContainer = document.getElementById(
+        "imagePlaceholderContainer"
+      );
+      const files = Array.from(input.files);
+
+      const totalFiles = selectedImages.length + files.length;
+      if (totalFiles > 5) {
+        alert("You can only upload up to 5 images.");
+        return;
+      }
+
+      files.forEach((file) => {
+        selectedImages.push(file);
+      });
+
+      renderImagePreview();
+      input.value = "";
+      placeholderContainer.style.display = "flex";
+      syncFileInput();
+    }
+
+    function renderImagePreview() {
+      const previewContainer = document.getElementById("imagePreview");
+      previewContainer.innerHTML = "";
+
+      selectedImages.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const col = document.createElement("div");
+          col.className = "col-4 col-md-3 mb-3 position-relative";
+
+          const img = document.createElement("img");
+          img.src = e.target.result;
+          img.className = "img-thumbnail";
+          img.style.height = "100px";
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className =
+            "btn btn-sm btn-danger position-absolute top-0 end-0";
+          removeBtn.innerHTML = "&times;";
+          removeBtn.onclick = function () {
+            selectedImages.splice(index, 1);
+            renderImagePreview();
+            syncFileInput();
+            if (selectedImages.length === 0) {
+              document.getElementById(
+                "imagePlaceholderContainer"
+              ).style.display = "none";
+            }
+          };
+
+          col.appendChild(img);
+          col.appendChild(removeBtn);
+          previewContainer.appendChild(col);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function syncFileInput() {
+      const inputElement = document.getElementById("imageInput");
+      const dataTransfer = new DataTransfer();
+      selectedImages.forEach((image) => dataTransfer.items.add(image));
+      inputElement.files = dataTransfer.files;
+    }
+  </script>
 </div>
 {% endblock %}

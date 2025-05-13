@@ -1,4 +1,15 @@
 {% extends 'base.html' %}
+
+{% block title %}
+  {% if view == "favorites" %}
+    My Favorite Books | Library Link
+  {% elif view == "pending" %}
+    My Pending Books | Library Link
+  {% else %}
+    Recently Viewed Books | Library Link
+  {% endif %}
+{% endblock %}
+
 {% block content %}
   {% include 'user/components/appbar.html' %}
   {% include 'user/components/drawer.html' %}
@@ -22,10 +33,10 @@
           
           <li class="mb-3">
             <a 
-              href="?view=returned" 
-              class="text-decoration-none text-dark {% if view == "returned" %}fw-bold{% endif %}"
+              href="?view=pending" 
+              class="text-decoration-none text-dark {% if view == "pending" %}fw-bold{% endif %}"
             >
-              My Returned
+              My Pending
             </a>
           </li>
           
@@ -41,13 +52,13 @@
         </ul>
       </div>
 
-      <!-- Main -->
+      <!-- Main Content -->
       <div class="flex-fill p-4">
         <h4 class="mb-4">
           {% if view == "favorites" %}
             My Favorite Books
-          {% elif view == "returned" %}
-            My Returned Books
+          {% elif view == "pending" %}
+            My Pending Books
           {% else %}
             Recently Viewed Books
           {% endif %}
@@ -80,10 +91,10 @@
           {% endfor %}
         </div>
 
-        {% if view == "grid" and books.has_next %}
+        {% if books.has_next %}
           <div class="text-center mt-4">
             <a 
-              href="?view=grid&page={{ books.next_page_number }}" 
+              href="?view={{ view }}&page={{ books.next_page_number }}" 
               class="btn btn-primary"
             >
               Load More

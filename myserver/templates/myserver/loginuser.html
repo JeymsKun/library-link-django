@@ -128,12 +128,14 @@ Library Link{% endblock %} {% block content %}
           <div class="row g-4 align-items-center">
             <!-- Logo Section -->
             <div class="col-md-6 text-center">
-              <img
-                src="{% static 'assets/official_logo.png' %}"
-                alt="Library Logo"
-                class="img-fluid"
-                style="max-width: 200px"
-              />
+              <a href="{% url 'login' %}">
+                <img
+                  src="{% static 'assets/official_logo.png' %}"
+                  alt="Library Logo"
+                  class="img-fluid"
+                  style="max-width: 200px"
+                />
+              </a>
             </div>
 
             <!-- Login Form -->

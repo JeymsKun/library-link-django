@@ -1,13 +1,15 @@
 # myserver/views.py
 import uuid
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-from myDjangoAdmin.models import Staff, LibraryUser, StaffSessionLog, UserSessionLog
+from myDjangoAdmin.models import Staff, LibraryUser, StaffSessionLog, UserSessionLog, Genre, Book
 from django.contrib.auth.hashers import check_password
 from myserver.decorators import staff_required, user_required
-from myserver.forms import LibraryUserSignupForm
+from myserver.forms import LibraryUserSignupForm, BookForm 
+from django.core.paginator import Paginator
+from django.db.models import Prefetch, Q
 
 def login_page(request):
     return render(request, "myserver/login.html")
@@ -54,19 +56,44 @@ def login_staff(request):
 
 @staff_required
 def staff_home(request):
-    return render(request, 'staff/home.html')
+    return render(request, 'staff/home.html', { 'appbar_title': 'Dashboard' })
 
 @staff_required
 def staff_addbook(request):
-    return render(request, 'staff/addnewbook.html')
+    if request.method == 'POST':
+        form = BookForm(request.POST, request.FILES)
+        if form.is_valid():
+            book = form.save()
+
+            extra_images = request.FILES.getlist('extra_images')
+            for index, image in enumerate(extra_images[:5], start=1):
+                setattr(book, f'extra_image_{index}', image)
+            book.save()
+
+            messages.success(request, "Book added successfully.")
+            return redirect('staff_addbook')
+        else:
+            print(form.errors)
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = BookForm()
+
+    genres = Genre.objects.all()
+    return render(request, 'staff/addnewbook.html', {'form': form, 'genres': genres, 'appbar_title': 'Add New Book'})
 
 @staff_required
 def staff_barcode(request):
-    return render(request, 'staff/barcode.html')
+    return render(request, 'staff/barcode.html', { 'appbar_title': 'Barcode' })
 
 @staff_required
 def staff_transaction(request):
-    return render(request, 'staff/transaction.html')
+    return render(request, 'staff/transaction.html', { 'appbar_title': 'Transaction' })
+
+@staff_required
+def staff_booklist(request):
+    books = Book.objects.prefetch_related('genres').all().order_by('-created_at')
+    genres = Genre.objects.all()
+    return render(request, 'staff/listofbooks.html', {'books': books, 'genres': genres, 'appbar_title': 'List of Books'})  
 
 def login_user(request):
     if request.method == 'POST':
@@ -131,30 +158,76 @@ def user_signup(request):
 
 @user_required
 def user_home(request):
-    # view = request.GET.get('view', 'grid')  
-    # book_list = []
+    # view = request.GET.get('view', 'grid')
 
     # if view == 'favorites':
-    #     book_list = request.user.favorite_books.all() 
-    # elif view == 'returned':
-    #     book_list = request.user.returned_books.all()  
-    # else:
-    #     book_list = request.user.recently_viewed_books.all()
+    #     book_list = Book.objects.filter(favorite_by=request.user)
+    # elif view == 'pending':
+    #     book_list = Book.objects.filter(pending_user=request.user)
+    # else:  
+    #     book_list = Book.objects.filter(recently_viewed_by=request.user)
 
-    # context = {
+    # paginator = Paginator(book_list, 12)
+    # page_number = request.GET.get('page')
+    # books = paginator.get_page(page_number)
+
+    # return render(request, 'user/bookshelf.html', {
     #     'view': view,
-    #     'book_list': book_list,
-    # }
-    # return render(request, 'user/home.html', context)
-    return render(request, 'user/home.html')
+    #     'book_list': books,
+    #     'books': books,
+    # })
+    return render(request, 'user/home.html', { 'appbar_title': 'My Bookshelf' })
 
 @user_required
 def user_booking(request):
-    return render(request, 'user/bookingsummary.html')
+    return render(request, 'user/bookingsummary.html', { 'appbar_title': 'Booking Summary' })
 
 @user_required
 def user_library(request):
-    return render(request, 'user/library.html')
+    genre_id = request.GET.get('genre', None)
+    search_term = request.GET.get('searchTerm', '').strip()
+
+    if genre_id:
+        books_qs = Book.objects.filter(genres__id=genre_id)
+        genres = Genre.objects.filter(id=genre_id).prefetch_related(
+            Prefetch('books', queryset=books_qs)
+        )
+    else:
+        books_qs = Book.objects.all()
+        genres = Genre.objects.prefetch_related(
+            Prefetch('books', queryset=books_qs)
+        )
+
+    if search_term:
+        books_qs = books_qs.filter(
+            Q(title__icontains=search_term) | 
+            Q(author__icontains=search_term) | 
+            Q(isbn__icontains=search_term) | 
+            Q(publisher__icontains=search_term) | 
+            Q(published_date__icontains=search_term) | 
+            Q(barcode_code__icontains=search_term) | 
+            Q(copies__icontains=search_term)
+        )
+
+        genres = genres.filter(
+            Q(name__icontains=search_term)
+        )
+
+    all_genres = Genre.objects.all()
+
+    context = {
+        'genres': genres,          
+        'all_genres': all_genres,  
+        'books': books_qs,        
+        'search_term': search_term,
+        'appbar_title': 'Library',
+    }
+    return render(request, 'user/library.html', context)
+
+@user_required
+def book_detail(request, pk):
+    book = get_object_or_404(Book, pk=pk)
+    return render(request, 'user/components/bookdetails.html', {'book': book})
 
 @staff_required
 def logout_staff(request):
@@ -199,6 +272,8 @@ def logout_user(request):
     request.session.pop('session_id', None)
     request.session.pop('user_email', None)
     logout(request)
-    return redirect('login_user')
+    return redirect('login_user') 
+
+
 
 # Create your views here.

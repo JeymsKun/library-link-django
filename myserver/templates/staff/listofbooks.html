@@ -1,0 +1,267 @@
+{% extends 'base.html' %} {% block content %}
+<!-- Top Navbar -->
+{% include 'staff/components/appbar.html' %}
+
+<!-- Sidebar -->
+{% include 'staff/components/drawer.html' %}
+
+<!-- Main content -->
+<div class="container-fluid mt-4" style="padding: 20px">
+  <!-- Page Heading -->
+  <div
+    class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4"
+  >
+    <h2 class="mb-0">List of Books</h2>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <div class="input-group" style="min-width: 200px; width: 250px">
+        <span
+          class="input-group-text"
+          id="basic-addon1"
+          style="cursor: pointer"
+          onclick="searchBooks()"
+        >
+          <i class="bi bi-search"></i>
+        </span>
+        <input
+          id="searchInput"
+          class="form-control"
+          type="text"
+          placeholder="Search a book..."
+          aria-label="Search"
+          aria-describedby="basic-addon1"
+        />
+      </div>
+
+      <select
+        id="sortSelect"
+        class="form-select"
+        style="min-width: 180px; width: 220px"
+      >
+        <option value="dateDesc">Date Published (Newest)</option>
+        <option value="dateAsc">Date Published (Oldest)</option>
+        <option value="authorAsc">Author A-Z</option>
+        <option value="authorDesc">Author Z-A</option>
+        <option value="genre">Genre</option>
+      </select>
+
+      <select
+        id="genreSelect"
+        class="form-select"
+        style="min-width: 180px; width: 220px"
+      >
+        <option value="">All Genres</option>
+        {% for genre in genres %}
+        <option value="{{ genre.id }}">{{ genre.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- Book Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover" id="booksTable">
+      <thead class="table-light sticky-top">
+        <tr>
+          <th class="text-center">#</th>
+          <th class="text-center">Book Name</th>
+          <th class="text-center">Author</th>
+          <th class="text-center">Genre</th>
+          <th class="text-center">Date Published</th>
+          <th class="text-center">Quantity</th>
+        </tr>
+      </thead>
+      <tbody id="bookRows">
+        {% for book in books %}
+        <tr
+          class="cursor-pointer"
+          data-index="{{ forloop.counter }}"
+          style="background-color: white"
+        >
+          <td class="text-center">{{ forloop.counter }}</td>
+          <td class="text-center">{{ book.title }}</td>
+          <td class="text-center">{{ book.author }}</td>
+          <td class="text-center">
+            {% if book.genres %}
+            <span class="badge bg-primary" data-genre-id="{{ book.genres.id }}"
+              >{{ book.genres.name }}</span
+            >
+            {% else %}
+            <span class="text-muted">N/A</span>
+            {% endif %}
+          </td>
+          <td class="text-center">{{ book.published_date|date:"M d, Y" }}</td>
+          <td class="text-center">{{ book.copies }}</td>
+        </tr>
+
+        <!-- Expanded Details Row -->
+        <tr class="collapse-row d-none" id="detail-{{ forloop.counter }}">
+          <td colspan="6">
+            <div class="p-2">
+              <strong>{{ book.title }}</strong> by {{ book.author }}<br />
+              <small>
+                <strong>Description:</strong>
+                {% if book.description %} {{ book.description }} {% else %} No
+                description available. {% endif %}<br />
+                <strong>Genre:</strong>
+                {% if book.genres %}
+                <span class="badge bg-secondary">{{ book.genres.name }}</span>
+                {% else %}
+                <span class="text-muted">N/A</span>
+                {% endif %} |
+                <strong>ISBN:</strong> {{ book.isbn|default:"N/A" }} |
+                <strong>Publisher:</strong> {{ book.publisher|default:"N/A" }} |
+                <strong>Published:</strong> {{ book.published_date }}
+              </small>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center">No books found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  function searchBooks() {
+    const searchTerm = document
+      .getElementById("searchInput")
+      .value.toLowerCase();
+    const rows = document.querySelectorAll("#bookRows tr");
+
+    for (let i = 0; i < rows.length; i += 2) {
+      const dataRow = rows[i];
+      const detailRow = rows[i + 1];
+      const title = dataRow
+        .querySelector("td:nth-child(2)")
+        .textContent.toLowerCase();
+      const match = title.includes(searchTerm);
+
+      dataRow.style.display = match ? "" : "none";
+      detailRow.style.display = match ? "" : "none";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".cursor-pointer").forEach((row) => {
+      row.addEventListener("click", () => {
+        const index = row.dataset.index;
+        const detailRow = document.getElementById(`detail-${index}`);
+
+        document.querySelectorAll(".collapse-row").forEach((r) => {
+          if (r !== detailRow) r.classList.add("d-none");
+        });
+
+        detailRow.classList.toggle("d-none");
+      });
+    });
+
+    document
+      .getElementById("sortSelect")
+      .addEventListener("change", function () {
+        const sortValue = this.value;
+        const allRows = Array.from(document.querySelectorAll("#bookRows tr"));
+        const tableBody = document.getElementById("bookRows");
+
+        const pairs = [];
+        for (let i = 0; i < allRows.length; i += 2) {
+          pairs.push([allRows[i], allRows[i + 1]]);
+        }
+
+        pairs.sort((a, b) => {
+          const rowA = a[0],
+            rowB = b[0];
+          const dateA = new Date(
+            rowA.querySelector("td:nth-child(5)").textContent
+          );
+          const dateB = new Date(
+            rowB.querySelector("td:nth-child(5)").textContent
+          );
+          const authorA = rowA.querySelector("td:nth-child(3)").textContent;
+          const authorB = rowB.querySelector("td:nth-child(3)").textContent;
+
+          switch (sortValue) {
+            case "dateDesc":
+              return dateB - dateA;
+            case "dateAsc":
+              return dateA - dateB;
+            case "authorAsc":
+              return authorA.localeCompare(authorB);
+            case "authorDesc":
+              return authorB.localeCompare(authorA);
+            default:
+              return 0;
+          }
+        });
+
+        tableBody.innerHTML = "";
+        pairs.forEach(([dataRow, detailRow]) => {
+          tableBody.appendChild(dataRow);
+          tableBody.appendChild(detailRow);
+        });
+      });
+
+    document
+      .getElementById("genreSelect")
+      .addEventListener("change", function () {
+        const genreValue = this.value;
+        const rows = document.querySelectorAll("#bookRows tr");
+        for (let i = 0; i < rows.length; i += 2) {
+          const dataRow = rows[i];
+          const detailRow = rows[i + 1];
+          const genreBadge = dataRow.querySelector(
+            "td:nth-child(4) span.badge"
+          );
+          const genreId = genreBadge ? genreBadge.dataset.genreId : null;
+
+          const match = !genreValue || genreId === genreValue;
+          dataRow.style.display = match ? "" : "none";
+          detailRow.style.display = match ? "" : "none";
+        }
+      });
+  });
+</script>
+
+<style>
+  .table thead.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .collapse-row {
+    background-color: #f8f9fa;
+  }
+
+  .collapse-row td {
+    white-space: normal !important;
+    overflow: visible;
+  }
+
+  .d-none {
+    display: none !important;
+  }
+
+  .table td,
+  .table th {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: 200px;
+  }
+
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+</style>
+{% endblock %}

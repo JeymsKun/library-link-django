@@ -1,0 +1,53 @@
+{% extends 'base.html' %} {% block content %}
+<!-- Appbar and drawer -->
+{% include 'user/components/appbar.html' %}
+
+<!-- Sidebar -->
+{% include 'user/components/drawer.html' %}
+
+<div class="container mt-4" style="padding: 20px">
+  <div class="row">
+    <!-- Book Cover -->
+    <div class="col-md-4 text-center mb-4">
+      <img
+        src="{{ book.cover_image.url }}"
+        alt="Book Cover"
+        class="img-fluid rounded shadow"
+        style="max-height: 400px; object-fit: contain"
+      />
+    </div>
+
+    <!-- Book Info -->
+    <div class="col-md-8">
+      <h2 class="mb-2">{{ book.title }}</h2>
+      <h5 class="text-muted mb-3">by {{ book.author }}</h5>
+
+      {% if book.genre %}
+      <p><strong>Genre:</strong> {{ book.genre.name }}</p>
+      {% endif %} {% if book.published_date %}
+      <p><strong>Published:</strong> {{ book.published_date }}</p>
+      {% endif %} {% if book.isbn %}
+      <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+      {% endif %} {% if book.language %}
+      <p><strong>Language:</strong> {{ book.language }}</p>
+      {% endif %} {% if book.page_count %}
+      <p><strong>Pages:</strong> {{ book.page_count }}</p>
+      {% endif %}
+
+      <!-- Description -->
+      {% if book.description %}
+      <hr />
+      <h5>Description</h5>
+      <p style="white-space: pre-line">{{ book.description }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Back to Library -->
+  <div class="mt-4 text-center">
+    <a href="{% url 'user_library' %}" class="btn btn-outline-primary"
+      >← Back to Library</a
+    >
+  </div>
+</div>
+{% endblock %}

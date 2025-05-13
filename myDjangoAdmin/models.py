@@ -1,6 +1,7 @@
 # myDjangoAdmin/models.py
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 import random
+import uuid
 from django.db import models
 from django.utils import timezone
 
@@ -224,5 +225,51 @@ class UserSessionLog(models.Model):
 
     def __str__(self):
         return f"{self.library_user.email} | {self.action} | {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+class Genre(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+class Book(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255)
+    author = models.CharField(max_length=255)
+    genres = models.ForeignKey(Genre, related_name='books', on_delete=models.CASCADE, null=True, blank=True)
+    isbn = models.CharField(max_length=20, blank=True, null=True)
+    publisher = models.CharField(max_length=255)
+    published_date = models.DateField(blank=True, null=True)
+    copies = models.PositiveIntegerField()
+    cover_image = models.ImageField(upload_to='book_covers/')
+    extra_image_1 = models.ImageField(upload_to='book_extra_images/', blank=True, null=True)
+    extra_image_2 = models.ImageField(upload_to='book_extra_images/', blank=True, null=True)
+    extra_image_3 = models.ImageField(upload_to='book_extra_images/', blank=True, null=True)
+    extra_image_4 = models.ImageField(upload_to='book_extra_images/', blank=True, null=True)
+    extra_image_5 = models.ImageField(upload_to='book_extra_images/', blank=True, null=True)
+    barcode_code = models.CharField(max_length=100, unique=True)
+    barcode_image = models.ImageField(upload_to='book_barcodes/', blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+    
+class BookRequest(models.Model):
+    user = models.ForeignKey(LibraryUser, on_delete=models.CASCADE, related_name='book_requests')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requests')
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('borrowed', 'Borrowed'),
+        ('returned', 'Returned')
+    ], default='pending')
+    quantity = models.PositiveIntegerField(default=1)
+    request_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.book.title} ({self.status})"
+
 
 # Create your models here.

@@ -4,7 +4,10 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
-from .models import Admin, Staff, LibraryUser
+from .models import Admin, Staff, LibraryUser, Genre, Book
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
+from django.utils.text import Truncator
 
 class LastSeenMixin:
     def time_since_last_seen(self, obj):
@@ -96,5 +99,71 @@ class UserAdminCustom(UserAdmin, LastSeenMixin):
     )
 
 admin.site.register(LibraryUser, UserAdminCustom)
+
+class GenreAdmin(admin.ModelAdmin):
+    list_display = ('name',)  
+    search_fields = ('name',) 
+
+admin.site.register(Genre, GenreAdmin)
+
+class BookAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'short_title', 'author', 'publisher', 'copies', 'short_description',
+        'created_at', 'isbn', 'published_date', 'barcode_code',  'display_genres',
+        'display_cover_image', 'display_barcode_image', 'display_extra_images'
+    )
+    list_filter = ('genres', 'publisher', 'published_date')
+    search_fields = ('id', 'title', 'author', 'isbn', 'publisher')
+    readonly_fields = ('id', 'display_cover_image', 'display_barcode_image', 'display_extra_images')
+
+    fieldsets = (
+        (None, {
+            'fields': (
+                'title', 'author', 'isbn', 'publisher', 'published_date',
+                'copies', 'description', 'barcode_code',
+                'cover_image', 'display_cover_image',
+                'barcode_image', 'display_barcode_image',
+                'extra_image_1', 'extra_image_2', 'extra_image_3', 'extra_image_4', 'extra_image_5',
+                'display_extra_images',
+                'genres',
+            )
+        }),
+    )
+    ordering = ('-created_at',)
+
+    def short_title(self, obj):
+        return Truncator(obj.title).chars(40)
+    short_title.short_description = 'Title'
+
+    def short_description(self, obj):
+        return Truncator(obj.description).chars(60)
+    short_description.short_description = 'Description'
+
+    def display_genres(self, obj):
+        return obj.genres.name if obj.genres else "N/A"
+    display_genres.short_description = 'Genre'
+
+    def display_cover_image(self, obj):
+        if obj.cover_image:
+            return format_html('<img src="{}" style="height: 100px;" />', obj.cover_image.url)
+        return "No Cover"
+    display_cover_image.short_description = "Cover Image"
+
+    def display_barcode_image(self, obj):
+        if obj.barcode_image:
+            return format_html('<img src="{}" style="height: 100px;" />', obj.barcode_image.url)
+        return "No Barcode"
+    display_barcode_image.short_description = "Barcode Image"
+
+    def display_extra_images(self, obj):
+        extra_images = [obj.extra_image_1, obj.extra_image_2, obj.extra_image_3, obj.extra_image_4, obj.extra_image_5]
+        images_html = "".join([
+            f'<img src="{image.url}" style="height: 75px; margin-right: 5px;" />' 
+            for image in extra_images if image
+        ])
+        return mark_safe(images_html if images_html else "No Extra Images")
+    display_extra_images.short_description = "Extra Images"
+
+admin.site.register(Book, BookAdmin)
 
 # Register other models here if needed
