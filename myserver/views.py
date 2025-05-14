@@ -1,18 +1,40 @@
-# myserver/views.py
+# myserver/views.
+import os
+import certifi
 import uuid
+import base64
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.http import HttpResponseRedirect
 from myDjangoAdmin.models import Staff, LibraryUser, StaffSessionLog, UserSessionLog, Genre, Book
-from django.contrib.auth.hashers import check_password
 from myserver.decorators import staff_required, user_required
 from myserver.forms import LibraryUserSignupForm, BookForm 
-from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, Content
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
 from django.conf import settings
+from django.utils import timezone
+from django.urls import reverse
+
+def otp_confirm(request):
+    user = request.user
+    
+    if request.method == 'POST':
+        otp_code = request.POST.get('otp_code')
+        try:
+            user = LibraryUser.objects.get(otp_code=otp_code)
+            if user.is_otp_valid(otp_code):
+                user.is_active = True
+                user.otp_code = None
+                user.otp_expiry = None
+                user.save()
+                messages.success(request, "Your account has been verified! You can now log in.")
+                return redirect('login') 
+            else:
+                messages.error(request, "Invalid or expired OTP.")
+        except LibraryUser.DoesNotExist:
+            messages.error(request, "Invalid OTP.")
+    return render(request, "myserver/components/otpconfirm.html")
 
 def login_page(request):
     return render(request, "myserver/login.html")
@@ -147,39 +169,161 @@ def user_signup(request):
         form = LibraryUserSignupForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password'])  
-            user.role = "user" 
+            user.set_password(form.cleaned_data['password'])
+            user.role = "user"
             user.save()
 
-            # # Create the email content
-            # content = Content("text/plain", f"Hi {user.full_name},\n\nYour library account has been successfully created. You can now log in using {user.email}.\n\nEnjoy reading!")
+            otp_code = user.generate_otp()
+            user.otp_code = otp_code
+            user.otp_expiry = timezone.now() + timezone.timedelta(minutes=10)
+            user.save()
 
-            # # Use Email class for to_email
-            # to_email = Email(user.email)
+            otp_url = request.build_absolute_uri(reverse('otp_confirm'))
 
-            # message = Mail(
-            #     from_email=Email(settings.DEFAULT_FROM_EMAIL),
-            #     to_emails=to_email,  # Ensure to use 'to_emails' (plural)
-            #     subject="Welcome to the Library!",
-            #     content=content  # Use content instead of plain_text_content
-            # )
+            logo_path = os.path.join(settings.BASE_DIR, 'myserver', 'static', 'assets', 'official_logo.png')
+            with open(logo_path, 'rb') as f:
+                logo_data = f.read()
+                encoded_logo = base64.b64encode(logo_data).decode()
 
-            # try:
-            #     # Initialize the SendGrid client with the API key
-            #     sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
-            #     # Now use the 'send' method from SendGridAPIClient to send the email
-            #     response = sg.send(message)
-            #     print(f"Email sent successfully! Response code: {response.status_code}")
-            # except Exception as e:
-            #     print(f"Error sending email: {str(e)}")
+            attachment = Attachment()
+            attachment.file_content = FileContent(encoded_logo)
+            attachment.file_type = FileType('image/png')
+            attachment.file_name = FileName('official_logo.png')
+            attachment.disposition = Disposition('inline')
+            attachment.content_id = ContentId('librarylinklogo')
 
-            messages.success(request, "You’ve successfully registered as a Library User!")
-            return redirect('login_user')  
+            html_content = f"""
+            <html>
+            <head>
+                <style>
+                @media only screen and (max-width: 600px) {{
+                    .container {{
+                        padding: 20px !important;
+                    }}
+                    .btn {{
+                        padding: 12px 20px !important;
+                        font-size: 16px !important;
+                    }}
+                }}
+                body {{
+                    font-family: Arial, sans-serif;
+                    background-color: #f2f4f6;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .container {{
+                    background-color: #ffffff;
+                    max-width: 600px;
+                    margin: 40px auto;
+                    padding: 40px;
+                    border-radius: 8px;
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 30px;
+                }}
+                .logo {{
+                    width: 120px;
+                    height: auto;
+                }}
+                h1 {{
+                    color: #1a73e8;
+                    font-size: 24px;
+                    margin-bottom: 10px;
+                }}
+                p {{
+                    font-size: 16px;
+                    color: #333333;
+                    line-height: 1.5;
+                }}
+                .otp-code {{
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #1a73e8;
+                    margin: 20px 0;
+                    text-align: center;
+                }}
+                .btn-container {{
+                    text-align: center;
+                }}
+                .btn {{
+                    display: inline-block;
+                    padding: 14px 28px;
+                    background-color: #1a73e8;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    margin-top: 20px;
+                }}
+                .footer {{
+                    font-size: 12px;
+                    color: #888888;
+                    margin-top: 40px;
+                    text-align: center;
+                }}
+                .legal {{
+                    margin-top: 20px;
+                    font-size: 11px;
+                    color: #aaa;
+                    line-height: 1.4;
+                    text-align: center;
+                }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <img src="cid:librarylinklogo" alt="Library Link Logo" class="logo">
+                        <h1>Welcome to Library Link, {user.full_name}!</h1>
+                    </div>
+                    <p>Thank you for registering with Library Link.</p>
+                    <p>To activate your account, please use the one-time password (OTP) below. This code is valid for the next 10 minutes:</p>
+                    <div class="otp-code">{otp_code}</div>
+                    <p class="btn-container">
+                        <a href="{otp_url}" class="btn">Verify OTP</a>
+                    </p>
+                    <div class="footer">
+                        <p>If you did not create this account, you can safely ignore this email.</p>
+                        <p>Library Link &copy; {timezone.now().year}</p>
+                    </div>
+                    <div class="legal">
+                        <p>This service is currently in <strong>beta</strong>. Features and availability may change without notice.</p>
+                        <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+                        <p>All rights reserved. Powered by Library Link Team.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = Mail(
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to_emails=user.email,
+                subject="Library Link Account - Email Address OTP Confirmation",
+                plain_text_content=f"Hi {user.full_name},\n\nYour OTP code is: {otp_code}",
+                html_content=html_content
+            )
+
+            message.attachment = attachment
+
+            try:
+                os.environ['SSL_CERT_FILE'] = certifi.where()
+                sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+                response = sg.send(message)
+                print(f"OTP email sent successfully! Response code: {response.status_code}")
+            except Exception as e:
+                print(f"Error sending OTP email: {str(e)}")
+
+            messages.success(request, "You’ve successfully registered! Please check your email for the OTP code to confirm your account.")
+            return redirect('otp_confirm')
         else:
             messages.error(request, "Please correct the errors below.")
     else:
         form = LibraryUserSignupForm()
-    
+
     return render(request, "myserver/signupuser.html", {'form': form})
 
 @user_required

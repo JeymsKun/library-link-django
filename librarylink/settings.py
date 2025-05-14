@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -93,7 +96,7 @@ SESSION_COOKIE_SECURE = False
 
 SESSION_COOKIE_HTTPONLY = True  
 
-SENDGRID_API_KEY = "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"
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 DEFAULT_FROM_EMAIL = 'maserinjames50@hotmail.com'
 

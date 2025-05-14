@@ -4,6 +4,7 @@ import random
 import uuid
 from django.db import models
 from django.utils import timezone
+import string
 
 class AdminManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -179,10 +180,13 @@ class LibraryUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=255)
     id_number = models.CharField(max_length=50, unique=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
-    last_seen = models.DateTimeField(null=True, blank=True)  
+    last_seen = models.DateTimeField(null=True, blank=True) 
+
+    otp_code = models.CharField(max_length=6, null=True, blank=True)
+    otp_expiry = models.DateTimeField(null=True, blank=True)
 
     objects = LibraryUserManager()
 
@@ -205,6 +209,16 @@ class LibraryUser(AbstractBaseUser, PermissionsMixin):
                 return f"Offline {time_diff.days} day(s) ago"
         else:
             return "Offline"
+        
+    def generate_otp(self, length=6):
+        """Generate a random OTP code."""
+        return ''.join(random.choices(string.digits, k=length))
+
+    def is_otp_valid(self, otp_code):
+        """Check if OTP is valid and not expired."""
+        if self.otp_expiry and timezone.now() < self.otp_expiry:
+            return self.otp_code == otp_code
+        return False
     
     groups = models.ManyToManyField(
         'auth.Group',
@@ -255,21 +269,21 @@ class Book(models.Model):
     def __str__(self):
         return self.title
     
-class BookRequest(models.Model):
-    user = models.ForeignKey(LibraryUser, on_delete=models.CASCADE, related_name='book_requests')
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requests')
-    status = models.CharField(max_length=20, choices=[
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('borrowed', 'Borrowed'),
-        ('returned', 'Returned')
-    ], default='pending')
-    quantity = models.PositiveIntegerField(default=1)
-    request_date = models.DateTimeField(auto_now_add=True)
+# class BookRequest(models.Model):
+#     user = models.ForeignKey(LibraryUser, on_delete=models.CASCADE, related_name='book_requests')
+#     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requests')
+#     status = models.CharField(max_length=20, choices=[
+#         ('pending', 'Pending'),
+#         ('approved', 'Approved'),
+#         ('rejected', 'Rejected'),
+#         ('borrowed', 'Borrowed'),
+#         ('returned', 'Returned')
+#     ], default='pending')
+#     quantity = models.PositiveIntegerField(default=1)
+#     request_date = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"{self.user.email} - {self.book.title} ({self.status})"
+#     def __str__(self):
+#         return f"{self.user.email} - {self.book.title} ({self.status})"
 
 
 # Create your models here.
