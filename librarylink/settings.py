@@ -93,6 +93,10 @@ SESSION_COOKIE_SECURE = False
 
 SESSION_COOKIE_HTTPONLY = True  
 
+SENDGRID_API_KEY = "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"
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+DEFAULT_FROM_EMAIL = 'maserinjames50@hotmail.com'
+
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 

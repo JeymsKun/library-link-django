@@ -10,6 +10,9 @@ from myserver.decorators import staff_required, user_required
 from myserver.forms import LibraryUserSignupForm, BookForm 
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, Content
+from django.conf import settings
 
 def login_page(request):
     return render(request, "myserver/login.html")
@@ -147,6 +150,29 @@ def user_signup(request):
             user.set_password(form.cleaned_data['password'])  
             user.role = "user" 
             user.save()
+
+            # # Create the email content
+            # content = Content("text/plain", f"Hi {user.full_name},\n\nYour library account has been successfully created. You can now log in using {user.email}.\n\nEnjoy reading!")
+
+            # # Use Email class for to_email
+            # to_email = Email(user.email)
+
+            # message = Mail(
+            #     from_email=Email(settings.DEFAULT_FROM_EMAIL),
+            #     to_emails=to_email,  # Ensure to use 'to_emails' (plural)
+            #     subject="Welcome to the Library!",
+            #     content=content  # Use content instead of plain_text_content
+            # )
+
+            # try:
+            #     # Initialize the SendGrid client with the API key
+            #     sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+            #     # Now use the 'send' method from SendGridAPIClient to send the email
+            #     response = sg.send(message)
+            #     print(f"Email sent successfully! Response code: {response.status_code}")
+            # except Exception as e:
+            #     print(f"Error sending email: {str(e)}")
+
             messages.success(request, "You’ve successfully registered as a Library User!")
             return redirect('login_user')  
         else:
