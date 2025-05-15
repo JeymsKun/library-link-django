@@ -1,10 +1,8 @@
 # myDjangoAdmin/models.py
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-import random
-import uuid
+import random, uuid, string
 from django.db import models
 from django.utils import timezone
-import string
 
 class AdminManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):

@@ -1,0 +1,26 @@
+{% extends "base.html" %} {% load static %} {% block content %}
+<div class="d-flex justify-content-center align-items-center min-vh-100 w-100">
+  <div
+    class="card shadow px-5 py-5 w-100 border-0 rounded-5"
+    style="max-width: 500px"
+  >
+    <div class="text-center mb-4">
+      <img
+        src="{% static 'assets/official_logo.png' %}"
+        alt="Library Link Logo"
+        style="width: 100px; height: auto"
+      />
+    </div>
+    <h2 class="text-center text-danger">Access Restricted</h2>
+    <p class="text-muted text-center">
+      You’re logged in as staff. This page is only accessible for users
+      registering their accounts.
+    </p>
+    <div class="text-center">
+      <a href="{% url 'logout_staff' %}" class="btn btn-secondary mt-3"
+        >Logout</a
+      >
+    </div>
+  </div>
+</div>
+{% endblock %}

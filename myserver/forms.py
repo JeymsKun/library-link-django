@@ -1,7 +1,14 @@
 # myserver/forms.py
 from django import forms
 from myDjangoAdmin.models import LibraryUser, Book, Genre
-from django.forms.widgets import FileInput
+
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(label="Email")
+
+class ResetPasswordForm(forms.Form):
+    email = forms.EmailField(widget=forms.HiddenInput())
+    otp = forms.CharField(label="OTP", max_length=6)
+    new_password = forms.CharField(widget=forms.PasswordInput())
 
 class LibraryUserSignupForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}))

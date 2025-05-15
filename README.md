@@ -34,11 +34,21 @@ This tutorial guides you through creating a Django-based library management syst
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/library-link-django.git
+git clone https://github.com/JeymsKun/library-link-django.git
 cd library-link-django
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+### Installing Additional Packages
+
+To add support for environment variables, SSL certificates, and email sending, install the following packages:
+
+```bash
+pip install python-dotenv
+pip install certifi
+pip install sendgrid
 ```
 
 ### Updating requirements.txt

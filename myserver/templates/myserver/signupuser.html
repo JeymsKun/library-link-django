@@ -21,6 +21,21 @@ Signup | Library Link {% endblock %} {% block content %}
     font-size: 1rem;
   }
 
+  .form-floating-custom input.is-invalid {
+    border-bottom-color: #dc3545 !important;
+    color: inherit;
+  }
+
+  .form-floating-custom input.is-invalid + label {
+    color: #dc3545 !important;
+  }
+
+  .form-floating-custom .invalid-feedback {
+    font-size: 0.7rem;
+    color: #dc3545;
+    position: relative;
+  }
+
   .form-floating-custom input:focus {
     border-color: #3498db;
     outline: none;
@@ -50,6 +65,21 @@ Signup | Library Link {% endblock %} {% block content %}
     border-radius: 1.5rem;
     padding: 2rem;
     box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.05);
+  }
+
+  input.is-invalid {
+    border-color: #dc3545 !important;
+    color: #dc3545 !important;
+  }
+
+  input.is-invalid + label {
+    color: #dc3545 !important;
+  }
+
+  .invalid-feedback {
+    font-size: 0.875rem;
+    color: #dc3545;
+    margin-top: 0.25rem;
   }
 
   .btn-no-hover {
@@ -140,12 +170,14 @@ Signup | Library Link {% endblock %} {% block content %}
           <div class="row g-4 align-items-center">
             <!-- Logo Section -->
             <div class="col-md-6 text-center">
-              <img
-                src="{% static 'assets/official_logo.png' %}"
-                alt="Library Logo"
-                class="img-fluid"
-                style="max-width: 200px"
-              />
+              <a href="{% url 'login' %}">
+                <img
+                  src="{% static 'assets/official_logo.png' %}"
+                  alt="Library Logo"
+                  class="img-fluid"
+                  style="max-width: 200px"
+                />
+              </a>
             </div>
 
             <!-- Signup Form Section -->
@@ -153,19 +185,17 @@ Signup | Library Link {% endblock %} {% block content %}
               <h5 class="text-center fw-bold mb-4">LIBRARY USER SIGNUP</h5>
 
               <!-- Snackbar for Error Messages -->
-              {% if messages %}
-              <div id="snackbar" class="snackbar show">
-                {% for message in messages %}
+              {% if messages %} {% for message in messages %}
+              <div class="snackbar show" id="snackbar-{{ forloop.counter }}">
                 <span>{{ message }}</span>
                 <button
-                  onclick="document.getElementById('snackbar').classList.remove('show')"
+                  onclick="document.getElementById('snackbar-{{ forloop.counter }}').classList.remove('show')"
                   class="btn-close btn-close-white ms-3"
                   aria-label="Close"
                   style="filter: brightness(0) invert(1)"
                 ></button>
-                {% endfor %}
               </div>
-              {% endif %}
+              {% endfor %} {% endif %}
 
               <form method="post" novalidate>
                 {% csrf_token %}
@@ -178,8 +208,13 @@ Signup | Library Link {% endblock %} {% block content %}
                       name="full_name"
                       placeholder=" "
                       required
+                      value="{{ form.full_name.value|default:'' }}"
+                      class="{% if form.full_name.errors %}is-invalid{% endif %}"
                     />
                     <label for="full_name">Full Name</label>
+                    {% for error in form.full_name.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
                   </div>
 
                   <div class="form-floating-custom">
@@ -190,8 +225,13 @@ Signup | Library Link {% endblock %} {% block content %}
                       placeholder=" "
                       required
                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                      value="{{ form.id_number.value|default:'' }}"
+                      class="{% if form.id_number.errors %}is-invalid{% endif %}"
                     />
                     <label for="id_number">ID Number (School/University)</label>
+                    {% for error in form.id_number.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
                   </div>
 
                   <div class="form-floating-custom">
@@ -201,8 +241,13 @@ Signup | Library Link {% endblock %} {% block content %}
                       name="email"
                       placeholder=" "
                       required
+                      value="{{ form.email.value|default:'' }}"
+                      class="{% if form.email.errors %}is-invalid{% endif %}"
                     />
                     <label for="email">Email Address</label>
+                    {% for error in form.email.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
                   </div>
 
                   <div class="form-floating-custom position-relative">
@@ -212,6 +257,7 @@ Signup | Library Link {% endblock %} {% block content %}
                       name="password"
                       placeholder=" "
                       required
+                      oninput="validatePasswords()"
                     />
                     <label for="password">Password</label>
                     <button
@@ -232,6 +278,7 @@ Signup | Library Link {% endblock %} {% block content %}
                       name="confirm_password"
                       placeholder=" "
                       required
+                      oninput="validatePasswords()"
                     />
                     <label for="confirm_password">Confirm Password</label>
                     <button
@@ -269,18 +316,33 @@ Signup | Library Link {% endblock %} {% block content %}
                   }
                 }
 
+                function validatePasswords() {
+                  const password = document.getElementById("password");
+                  const confirmPassword =
+                    document.getElementById("confirm_password");
+
+                  if (
+                    confirmPassword.value !== "" &&
+                    password.value !== confirmPassword.value
+                  ) {
+                    password.classList.add("is-invalid");
+                    confirmPassword.classList.add("is-invalid");
+                  } else {
+                    password.classList.remove("is-invalid");
+                    confirmPassword.classList.remove("is-invalid");
+                  }
+                }
+
                 document.addEventListener("DOMContentLoaded", () => {
-                  const snackbar = document.getElementById("snackbar");
-                  if (snackbar) {
+                  const snackbars = document.querySelectorAll(".snackbar.show");
+                  snackbars.forEach((snackbar) => {
                     setTimeout(() => {
                       snackbar.classList.remove("show");
-                    }, 2000);
-                  }
+                    }, 4000);
+                  });
                 });
               </script>
             </div>
-
-            <!-- End Signup Form Section -->
           </div>
         </div>
       </div>

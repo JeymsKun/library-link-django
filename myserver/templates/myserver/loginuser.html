@@ -182,6 +182,20 @@ Library Link{% endblock %} {% block content %}
                   </div>
                 </div>
 
+                <!-- Forgot Password Link -->
+                <div
+                  class="text-start mt-2 px-3 px-md-4"
+                  style="max-width: 300px; margin: 0 auto"
+                >
+                  <a
+                    href="{% url 'forgot_password' %}"
+                    class="text-decoration-none"
+                    style="color: #3498db"
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+
                 <!-- Snackbar for Error Messages -->
                 {% if messages %}
                 <div id="snackbar" class="snackbar show">

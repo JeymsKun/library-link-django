@@ -1,14 +1,11 @@
 # myserver/views.
-import os
-import certifi
-import uuid
-import base64
+import os, certifi, uuid, base64
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from myDjangoAdmin.models import Staff, LibraryUser, StaffSessionLog, UserSessionLog, Genre, Book
+from myDjangoAdmin.models import Staff, Admin, LibraryUser, StaffSessionLog, UserSessionLog, Genre, Book
 from myserver.decorators import staff_required, user_required
-from myserver.forms import LibraryUserSignupForm, BookForm 
+from myserver.forms import LibraryUserSignupForm, BookForm, ForgotPasswordForm, ResetPasswordForm
 from django.db.models import Prefetch, Q
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
@@ -17,24 +14,36 @@ from django.utils import timezone
 from django.urls import reverse
 
 def otp_confirm(request):
-    user = request.user
-    
+    if request.user.is_authenticated:
+        if not request.user.is_staff:
+            return redirect('user_home')
+        else:
+            return render(request, "myserver/components/loginasauserrequired.html")
+
+    email = request.session.get('email_for_otp', None)
+    if not email:
+        messages.error(request, "No email found for OTP confirmation.")
+        return redirect('user_signup')
+
     if request.method == 'POST':
         otp_code = request.POST.get('otp_code')
         try:
-            user = LibraryUser.objects.get(otp_code=otp_code)
+            user = LibraryUser.objects.get(email=email, otp_code=otp_code)
             if user.is_otp_valid(otp_code):
                 user.is_active = True
                 user.otp_code = None
                 user.otp_expiry = None
                 user.save()
                 messages.success(request, "Your account has been verified! You can now log in.")
-                return redirect('login') 
+                request.session.pop('email_for_otp', None)
+                return redirect('login_user')
             else:
                 messages.error(request, "Invalid or expired OTP.")
         except LibraryUser.DoesNotExist:
             messages.error(request, "Invalid OTP.")
-    return render(request, "myserver/components/otpconfirm.html")
+
+    return render(request, "myserver/components/otpconfirm.html", {'email': email})
+
 
 def login_page(request):
     return render(request, "myserver/login.html")
@@ -167,6 +176,29 @@ def login_user(request):
 def user_signup(request):
     if request.method == "POST":
         form = LibraryUserSignupForm(request.POST)
+
+        email = request.POST.get('email')
+        full_name = request.POST.get('full_name')
+        id_number = request.POST.get('id_number')
+
+        if LibraryUser.objects.filter(email=email).exists() or \
+           Staff.objects.filter(email=email).exists() or \
+           Admin.objects.filter(email=email).exists():
+            pass
+
+        name_parts = full_name.strip().split()
+        first_name = name_parts[0]
+        last_name = name_parts[-1] if len(name_parts) > 1 else ""
+
+        if LibraryUser.objects.filter(full_name=full_name).exists() or \
+           Staff.objects.filter(first_name=first_name, last_name=last_name).exists() or \
+           Admin.objects.filter(first_name=first_name, last_name=last_name).exists():
+            form.add_error('full_name', "Library user with this Name already exists.")
+
+        if LibraryUser.objects.filter(id_number=id_number).exists() or \
+           Staff.objects.filter(staff_id=id_number).exists():
+            pass
+
         if form.is_valid():
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password'])
@@ -266,10 +298,14 @@ def user_signup(request):
                 }}
                 .legal {{
                     margin-top: 20px;
-                    font-size: 11px;
+                    font-size: 10px;
                     color: #aaa;
-                    line-height: 1.4;
-                    text-align: center;
+                    line-height: 1.2;
+                    text-align: justify;
+                }}
+                .legal .inline {{
+                    display: inline-block;
+                    margin-right: 20px;
                 }}
                 </style>
             </head>
@@ -283,16 +319,16 @@ def user_signup(request):
                     <p>To activate your account, please use the one-time password (OTP) below. This code is valid for the next 10 minutes:</p>
                     <div class="otp-code">{otp_code}</div>
                     <p class="btn-container">
-                        <a href="{otp_url}" class="btn">Verify OTP</a>
+                        <a href="{otp_url}" class="btn" style="color: white;">Verify OTP</a>
                     </p>
                     <div class="footer">
-                        <p>If you did not create this account, you can safely ignore this email.</p>
-                        <p>Library Link &copy; {timezone.now().year}</p>
+                        <p>If you did not request a password reset, you can ignore this email.</p>
                     </div>
                     <div class="legal">
-                        <p>This service is currently in <strong>beta</strong>. Features and availability may change without notice.</p>
+                        <p>This service is currently in its <strong>beta</strong> version. Features and availability may change without notice.</p>
                         <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
-                        <p>All rights reserved. Powered by Library Link Team.</p>
+                        <p class="inline">All rights reserved. Powered by Library Link Team.</p>
+                        <p class="inline">Library Link &copy; {timezone.now().year}</p>
                     </div>
                 </div>
             </body>
@@ -318,6 +354,7 @@ def user_signup(request):
                 print(f"Error sending OTP email: {str(e)}")
 
             messages.success(request, "You’ve successfully registered! Please check your email for the OTP code to confirm your account.")
+            request.session['email_for_otp'] = user.email
             return redirect('otp_confirm')
         else:
             messages.error(request, "Please correct the errors below.")
@@ -325,6 +362,195 @@ def user_signup(request):
         form = LibraryUserSignupForm()
 
     return render(request, "myserver/signupuser.html", {'form': form})
+
+def forgot_password_request(request):
+    if request.method == "POST":
+        form = ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            try:
+                user = LibraryUser.objects.get(email=email)
+            except LibraryUser.DoesNotExist:
+                messages.error(request, "No account found with this email.")
+                return redirect('forgot_password')
+
+            otp_code = user.generate_otp()
+            user.otp_code = otp_code
+            user.otp_expiry = timezone.now() + timezone.timedelta(minutes=10)
+            user.save()
+
+            reset_url = request.build_absolute_uri(reverse('reset_password')) + f"?email={email}"
+
+            logo_path = os.path.join(settings.BASE_DIR, 'myserver', 'static', 'assets', 'official_logo.png')
+            with open(logo_path, 'rb') as f:
+                logo_data = f.read()
+                encoded_logo = base64.b64encode(logo_data).decode()
+
+            attachment = Attachment()
+            attachment.file_content = FileContent(encoded_logo)
+            attachment.file_type = FileType('image/png')
+            attachment.file_name = FileName('official_logo.png')
+            attachment.disposition = Disposition('inline')
+            attachment.content_id = ContentId('librarylinklogo')
+
+            html_content = f"""
+            <html>
+                <head>
+                    <style>
+                        @media only screen and (max-width: 600px) {{
+                            .container {{
+                                padding: 20px !important;
+                            }}
+                            .btn {{
+                                padding: 12px 20px !important;
+                                font-size: 16px !important;
+                            }}
+                        }}
+                        body {{
+                            font-family: Arial, sans-serif;
+                            background-color: #f2f4f6;
+                            margin: 0;
+                            padding: 0;
+                        }}
+                        .container {{
+                            background-color: #ffffff;
+                            max-width: 600px;
+                            margin: 40px auto;
+                            padding: 40px;
+                            border-radius: 8px;
+                            box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+                        }}
+                        .header {{
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }}
+                        .logo {{
+                            width: 120px;
+                            height: auto;
+                        }}
+                        h1 {{
+                            color: #1a73e8;
+                            font-size: 24px;
+                            margin-bottom: 10px;
+                        }}
+                        p {{
+                            font-size: 16px;
+                            color: #333333;
+                            line-height: 1.5;
+                        }}
+                        .otp-code {{
+                            font-size: 24px;
+                            font-weight: bold;
+                            color: #1a73e8;
+                            margin: 20px 0;
+                            text-align: center;
+                        }}
+                        .btn-container {{
+                            text-align: center;
+                        }}
+                        .btn {{
+                            display: inline-block;
+                            padding: 14px 28px;
+                            background-color: #1a73e8;
+                            color: white;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            font-size: 16px;
+                            font-weight: bold;
+                            margin-top: 20px;
+                        }}
+                        .footer {{
+                            font-size: 12px;
+                            color: #888888;
+                            margin-top: 40px;
+                            text-align: center;
+                        }}
+                        .legal {{
+                            margin-top: 20px;
+                            font-size: 10px;
+                            color: #aaa;
+                            line-height: 1.2;
+                            text-align: justify;
+                        }}
+                        .legal .inline {{
+                            display: inline-block;
+                            margin-right: 20px;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <img src="cid:librarylinklogo" alt="Library Link Logo" class="logo">
+                            <h1>Password Reset Requested</h1>
+                        </div>
+                        <p>Hi {user.full_name},</p>
+                        <p>You requested to reset your Library Link password. Use the OTP below to proceed:</p>
+                        <div class="otp-code">{otp_code}</div>
+                        <p class="btn-container">
+                            <a href="{reset_url}" class="btn" style="color: white;">Reset Password</a>
+                        </p>
+                        <div class="footer">
+                            <p>If you did not request a password reset, you can ignore this email.</p>
+                        </div>
+                        <div class="legal">
+                            <p>This service is currently in its <strong>beta</strong> version. Features and availability may change without notice.</p>
+                            <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+                            <p class="inline">All rights reserved. Powered by Library Link Team.</p>
+                            <p class="inline">Library Link &copy; {timezone.now().year}</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+            """
+
+            message = Mail(
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to_emails=user.email,
+                subject="Library Link - Password Reset OTP",
+                plain_text_content=f"Hi {user.full_name},\n\nYour OTP is: {otp_code}",
+                html_content=html_content
+            )
+
+            message.attachment = attachment
+
+            try:
+                os.environ['SSL_CERT_FILE'] = certifi.where()
+                sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+                sg.send(message)
+                messages.success(request, "OTP sent to your email. Please check and proceed to reset your password.")
+                return redirect(f"{reverse('reset_password')}?email={email}")
+            except Exception as e:
+                messages.error(request, f"Email error: {str(e)}")
+
+    else:
+        form = ForgotPasswordForm()
+
+    return render(request, "myserver/components/forgotpassword.html", {"form": form})
+
+def reset_password(request):
+    email = request.GET.get("email") or request.POST.get("email")
+    if request.method == "POST":
+        form = ResetPasswordForm(request.POST)
+        if form.is_valid():
+            otp = form.cleaned_data["otp"]
+            new_password = form.cleaned_data["new_password"]
+            try:
+                user = LibraryUser.objects.get(email=email)
+                if user.is_otp_valid(otp):
+                    user.set_password(new_password)
+                    user.otp_code = None
+                    user.otp_expiry = None
+                    user.save()
+                    messages.success(request, "Password reset successful. You may now log in.")
+                    return redirect("login_user")
+                else:
+                    messages.error(request, "Invalid or expired OTP.")
+            except LibraryUser.DoesNotExist:
+                messages.error(request, "Invalid email address.")
+    else:
+        form = ResetPasswordForm(initial={"email": email})
+    return render(request, "myserver/components/resetpassword.html", {"form": form})
 
 @user_required
 def user_home(request):
@@ -397,7 +623,32 @@ def user_library(request):
 @user_required
 def book_detail(request, pk):
     book = get_object_or_404(Book, pk=pk)
-    return render(request, 'user/components/bookdetails.html', {'book': book})
+
+    images = []
+    if book.cover_image:
+        images.append(book.cover_image.url)
+    for extra_img in [
+        book.extra_image_1,
+        book.extra_image_2,
+        book.extra_image_3,
+        book.extra_image_4,
+        book.extra_image_5,
+    ]:
+        if extra_img:
+            images.append(extra_img.url)
+
+    barcode_url = book.barcode_image.url if book.barcode_image else None
+
+    is_favorite = False
+
+    context = {
+        'book': book,
+        'images': images,
+        'barcode_url': barcode_url,
+        'is_favorite': is_favorite,
+        'appbar_title': 'About This Book',
+    }
+    return render(request, 'user/components/bookdetails.html', context)
 
 @staff_required
 def logout_staff(request):
