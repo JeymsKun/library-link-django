@@ -22,5 +22,7 @@ urlpatterns = [
     path("user/booking/", views.user_booking, name="user_booking"),
     path("user/library/", views.user_library, name="user_library"),
     path('user/library/book/<uuid:pk>/', views.book_detail, name='book_detail'),
+    path('toggle-favorite/', views.toggle_favorite, name='toggle_favorite'),
+    path('user/book/book-cart/', views.book_cart, name='book_cart'),
     path('user/logout/', views.logout_user, name='logout_user'),
 ]

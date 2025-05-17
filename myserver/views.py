@@ -12,6 +12,26 @@ from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileT
 from django.conf import settings
 from django.utils import timezone
 from django.urls import reverse
+from .models import FavoriteBook
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+@require_POST
+@user_required
+def toggle_favorite(request):
+    book_id = request.POST.get('book_id')
+    if not book_id:
+        return JsonResponse({'error': 'Missing book ID'}, status=400)
+
+    try:
+        book = Book.objects.get(pk=book_id)
+        fav, created = FavoriteBook.objects.get_or_create(user=request.user, book=book)
+        if not created:
+            fav.delete()
+            return JsonResponse({'status': 'removed'})
+        return JsonResponse({'status': 'added'})
+    except Book.DoesNotExist:
+        return JsonResponse({'error': 'Book not found'}, status=404)
 
 def otp_confirm(request):
     if request.user.is_authenticated:
@@ -638,8 +658,7 @@ def book_detail(request, pk):
             images.append(extra_img.url)
 
     barcode_url = book.barcode_image.url if book.barcode_image else None
-
-    is_favorite = False
+    is_favorite = FavoriteBook.objects.filter(user=request.user, book=book).exists()
 
     context = {
         'book': book,
@@ -649,6 +668,16 @@ def book_detail(request, pk):
         'appbar_title': 'About This Book',
     }
     return render(request, 'user/components/bookdetails.html', context)
+
+@user_required
+def book_cart(request):
+
+    suggested_books = list(Book.objects.order_by('?')[:5])
+
+    context = {
+        'suggested_books': suggested_books,
+    }
+    return render(request, 'user/components/bookcart.html', context)
 
 @staff_required
 def logout_staff(request):

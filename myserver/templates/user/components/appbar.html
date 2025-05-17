@@ -32,5 +32,15 @@
         {% block header %} {{ appbar_title }} {% endblock %}
       </span>
     </div>
+
+    {% if show_favorite %}
+    <a
+      href="{% url 'book_cart' %}"
+      class="btn btn-link p-0 fs-3 text-decoration-none"
+      title="Go to booking cart"
+    >
+      🛒
+    </a>
+    {% endif %}
   </div>
 </nav>

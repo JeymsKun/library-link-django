@@ -5,6 +5,7 @@ from django.utils.html import format_html
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 from .models import Admin, Staff, LibraryUser, Genre, Book
+from myserver.models import FavoriteBook
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.text import Truncator
@@ -165,5 +166,12 @@ class BookAdmin(admin.ModelAdmin):
     display_extra_images.short_description = "Extra Images"
 
 admin.site.register(Book, BookAdmin)
+
+class FavoriteBookAdmin(admin.ModelAdmin):
+    list_display = ('user', 'book', 'added_at')
+    search_fields = ('user__email', 'book__title')
+    list_filter = ('added_at',)
+
+admin.site.register(FavoriteBook, FavoriteBookAdmin)
 
 # Register other models here if needed

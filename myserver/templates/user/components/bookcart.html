@@ -1,0 +1,143 @@
+{% extends 'base.html' %} {% load static %} {% block content %}
+
+<!-- Test the inclusion -->
+{% include 'user/components/appbar.html' with show_favorite=True %}
+
+<!-- Sidebar -->
+{% include 'user/components/drawer.html' %}
+
+<div class="container-fluid mt-4" style="padding-top: 70px">
+  <div class="row flex-row">
+    <!-- Suggested Books (left column) -->
+    <div class="col-md-4 mb-4">
+      <h5>Suggested Books:</h5>
+      <hr />
+      {% if suggested_books %} {% for book in suggested_books %}
+      <div class="d-flex mb-3 align-items-center">
+        <div
+          style="
+            width: 100px;
+            height: 130px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 12px;
+          "
+        >
+          <img
+            src="{{ book.cover_image_url|default:'/static/default-cover.png' }}"
+            alt="{{ book.title }}"
+            style="width: 100%; height: 100%; object-fit: cover"
+          />
+        </div>
+        <div>
+          <h6 class="mb-1 text-truncate" style="max-width: 180px">
+            {{ book.title }}
+          </h6>
+          <small class="text-muted">{{ book.author }}</small>
+        </div>
+      </div>
+      {% endfor %} {% else %}
+      <p>No suggestions available.</p>
+      {% endif %}
+    </div>
+
+    <!-- Divider (vertical on md+) -->
+    <div class="d-none d-md-block col-md-1 border-start"></div>
+
+    <!-- Book Cart (right column) -->
+    <div class="col-md-7">
+      {% if books %}
+      <form method="post" id="bookCartForm">
+        {% csrf_token %} {% for item in books %}
+        <div class="d-flex align-items-center border rounded p-3 mb-3">
+          <input
+            type="checkbox"
+            name="selected_books"
+            value="{{ item.book.id }}"
+            class="form-check-input me-3"
+            id="book{{ item.book.id }}"
+          />
+          <div
+            style="
+              width: 100px;
+              height: 130px;
+              overflow: hidden;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+              margin-right: 15px;
+            "
+          >
+            <img
+              src="{{ item.book.cover_image_url|default:'/static/default-cover.png' }}"
+              alt="{{ item.book.title }}"
+              style="width: 100%; height: 100%; object-fit: cover"
+            />
+          </div>
+          <div class="flex-grow-1" style="max-height: 130px; overflow: hidden">
+            <h5 class="mb-1">{{ item.book.title }}</h5>
+            <p class="mb-1 text-muted small">{{ item.book.author }}</p>
+          </div>
+          <div class="d-flex flex-column gap-2 ms-auto">
+            <!-- Remove button -->
+            <button
+              type="submit"
+              name="remove_book"
+              value="{{ item.book.id }}"
+              class="btn btn-outline-danger btn-sm"
+              title="Remove"
+            >
+              <i class="bi bi-trash"></i> Remove
+            </button>
+
+            <!-- Borrow and Request buttons -->
+            <button
+              type="submit"
+              name="borrow_book"
+              value="{{ item.book.id }}"
+              class="btn btn-primary btn-sm"
+            >
+              Borrow Book
+            </button>
+            <button
+              type="submit"
+              name="request_booking"
+              value="{{ item.book.id }}"
+              class="btn btn-secondary btn-sm"
+            >
+              Request Booking
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </form>
+      {% else %}
+      <div class="text-center py-5 border border-dashed rounded">
+        <h5 class="text-muted">
+          You don't have any books in your pending booking cart.
+        </h5>
+        <p class="text-muted">
+          Browse the library and add books you'd like to borrow.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Limit checkbox selection to max 3
+  const checkboxes = document.querySelectorAll('input[name="selected_books"]');
+  checkboxes.forEach((box) => {
+    box.addEventListener("change", () => {
+      const checkedBoxes = document.querySelectorAll(
+        'input[name="selected_books"]:checked'
+      );
+      if (checkedBoxes.length > 3) {
+        alert("You can only select up to 3 books.");
+        box.checked = false;
+      }
+    });
+  });
+</script>
+{% endblock %}
