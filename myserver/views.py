@@ -11,10 +11,12 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
 from django.conf import settings
 from django.utils import timezone
+from datetime import timedelta
 from django.urls import reverse
-from .models import FavoriteBook
+from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.core.paginator import Paginator
 
 @require_POST
 @user_required
@@ -574,25 +576,29 @@ def reset_password(request):
 
 @user_required
 def user_home(request):
-    # view = request.GET.get('view', 'grid')
+    user = request.user
+    view = request.GET.get('view', 'grid')
 
-    # if view == 'favorites':
-    #     book_list = Book.objects.filter(favorite_by=request.user)
-    # elif view == 'pending':
-    #     book_list = Book.objects.filter(pending_user=request.user)
-    # else:  
-    #     book_list = Book.objects.filter(recently_viewed_by=request.user)
+    if view == 'favorites':
+        book_list = Book.objects.filter(favoritebook__user=user)
+    elif view == 'pending':
+        book_list = Book.objects.filter(in_carts__user=user).order_by('-in_carts__added_at')
+    else:  
+        book_list = Book.objects.filter(recentlyviewed__user=user).order_by('-recentlyviewed__viewed_at')
 
-    # paginator = Paginator(book_list, 12)
-    # page_number = request.GET.get('page')
-    # books = paginator.get_page(page_number)
+    recently_viewed = RecentlyViewed.objects.filter(user=user).select_related('book').order_by('-viewed_at')[:10]
 
-    # return render(request, 'user/bookshelf.html', {
-    #     'view': view,
-    #     'book_list': books,
-    #     'books': books,
-    # })
-    return render(request, 'user/home.html', { 'appbar_title': 'My Bookshelf' })
+    paginator = Paginator(book_list, 12)  
+    page_number = request.GET.get('page')
+    books_page = paginator.get_page(page_number)
+
+    return render(request, 'user/home.html', {
+        'view': view,
+        'book_list': books_page,
+        'books': books_page, 
+        'recently_viewed': recently_viewed,
+        'appbar_title': 'My Bookshelf'
+    })
 
 @user_required
 def user_booking(request):
@@ -630,15 +636,22 @@ def user_library(request):
         )
 
     all_genres = Genre.objects.all()
+    recently_viewed = RecentlyViewed.objects.filter(user=request.user).select_related('book')[:10]
 
     context = {
         'genres': genres,          
         'all_genres': all_genres,  
         'books': books_qs,        
         'search_term': search_term,
+        'recently_viewed': [entry.book for entry in recently_viewed],
         'appbar_title': 'Library',
     }
     return render(request, 'user/library.html', context)
+
+@user_required
+def clear_recently_viewed(request):
+    RecentlyViewed.objects.filter(user=request.user).delete()
+    return redirect('user_library')
 
 @user_required
 def book_detail(request, pk):
@@ -660,25 +673,118 @@ def book_detail(request, pk):
     barcode_url = book.barcode_image.url if book.barcode_image else None
     is_favorite = FavoriteBook.objects.filter(user=request.user, book=book).exists()
 
+    RecentlyViewed.objects.update_or_create(
+        user=request.user,
+        book=book,
+        defaults={'viewed_at': timezone.now()}
+    )
+
+    from_page = request.GET.get('from', None)
+    view_name = request.GET.get('view', None)
+
     context = {
         'book': book,
         'images': images,
         'barcode_url': barcode_url,
         'is_favorite': is_favorite,
         'appbar_title': 'About This Book',
+        'from_page': from_page,
+        'view_name': view_name,
     }
     return render(request, 'user/components/bookdetails.html', context)
 
 @user_required
 def book_cart(request):
+    user = request.user
 
+    if request.method == 'POST':
+        if 'borrow_book' in request.POST:
+            book_id = request.POST.get('borrow_book')
+
+            try:
+                cart_item = BookingCart.objects.get(user=user, book_id=book_id)
+
+                borrowed, created = BorrowedBook.objects.get_or_create(
+                    user=user,
+                    book=cart_item.book,
+                    defaults={
+                        'borrowed_at': timezone.now(),
+                    }
+                )
+
+                if created:
+                    cart_item.delete()
+                    messages.success(request, f"You borrowed '{cart_item.book.title}'.")
+                else:
+                    messages.warning(request, f"You've already borrowed '{cart_item.book.title}'.")
+
+                return redirect('book_cart')
+
+            except BookingCart.DoesNotExist:
+                messages.error(request, "Book not found in your cart.")
+                return redirect('book_cart')
+
+        elif 'remove_book' in request.POST:
+            book_id = request.POST.get('remove_book')
+            BookingCart.objects.filter(user=user, book_id=book_id).delete()
+            messages.success(request, "Book removed from cart.")
+            return redirect('book_cart')
+
+        elif 'request_booking' in request.POST:
+            book_id = request.POST.get('request_booking')
+
+            try:
+                cart_item = BookingCart.objects.get(user=user, book_id=book_id)
+
+                reserved, created = ReservedBook.objects.get_or_create(
+                    user=user,
+                    book=cart_item.book,
+                    defaults={'reserved_at': timezone.now()}
+                )
+
+                if created:
+                    cart_item.delete()
+                    messages.success(request, f"You reserved '{cart_item.book.title}'.")
+                else:
+                    messages.warning(request, f"You already reserved '{cart_item.book.title}'.")
+
+            except BookingCart.DoesNotExist:
+                messages.error(request, "Book not found in your cart.")
+
+            return redirect('book_cart')
+
+        elif 'request_booking' in request.POST:
+            messages.info(request, "Booking request submitted (mock action).")
+            return redirect('book_cart')
+
+    cart_items = BookingCart.objects.filter(user=user).select_related('book')
     suggested_books = list(Book.objects.order_by('?')[:5])
 
     context = {
+        'books': cart_items,
         'suggested_books': suggested_books,
+        'appbar_title': 'Book Cart',
     }
+
     return render(request, 'user/components/bookcart.html', context)
 
+@user_required
+@require_POST
+def add_to_cart(request):
+    book_id = request.POST.get('book_id')
+    try:
+        book = Book.objects.get(id=book_id)
+
+        cart_item, created = BookingCart.objects.get_or_create(user=request.user, book=book)
+
+        if created:
+            return JsonResponse({'status': 'added'})
+        else:
+            return JsonResponse({'status': 'already_exists'})
+
+    except Book.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Book not found'})
+    
 @staff_required
 def logout_staff(request):
     staff_id = request.session.get('staff_id')

@@ -70,7 +70,7 @@
       >
         {% if genre.books.all|length > 0 %} {% for book in genre.books.all %}
         <div class="book-card flex-shrink-0" style="width: 140px">
-          <a href="{% url 'book_detail' book.id %}" class="text-decoration-none text-dark">
+          <a href="{% url 'book_detail' book.id %}?from=library" class="text-decoration-none text-dark">
             <div class="card h-100" style="height: 250px">
               <img
                 src="{{ book.cover_image.url }}"

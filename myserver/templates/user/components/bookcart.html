@@ -1,15 +1,26 @@
 {% extends 'base.html' %} {% load static %} {% block content %}
 
-<!-- Test the inclusion -->
-{% include 'user/components/appbar.html' with show_favorite=True %}
+<!-- AppBar and Sidebar -->
+{% include 'user/components/appbar.html' %}
 
 <!-- Sidebar -->
 {% include 'user/components/drawer.html' %}
 
-<div class="container-fluid mt-4" style="padding-top: 70px">
+<!-- Back Button -->
+<div class="container-fluid mt-2 mb-4" style="padding-top: 70px">
+  <a
+    href="{% url 'user_home' %}"
+    class="btn text-primary fw-semibold ms-4"
+    style="box-shadow: none; border: none"
+  >
+    ← Back to Bookshelf
+  </a>
+</div>
+
+<div class="container-fluid mt-4">
   <div class="row flex-row">
-    <!-- Suggested Books (left column) -->
-    <div class="col-md-4 mb-4">
+    <!-- Suggested Books -->
+    <div class="col-md-3 mb-4">
       <h5>Suggested Books:</h5>
       <hr />
       {% if suggested_books %} {% for book in suggested_books %}
@@ -21,20 +32,67 @@
             overflow: hidden;
             border: 1px solid #ddd;
             border-radius: 4px;
-            margin-right: 12px;
+            margin-right: 15px;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f0f0;
           "
         >
           <img
-            src="{{ book.cover_image_url|default:'/static/default-cover.png' }}"
+            src="{{ book.cover_image.url|default:'/static/default-cover.png' }}"
             alt="{{ book.title }}"
-            style="width: 100%; height: 100%; object-fit: cover"
+            style="
+              max-height: 100%;
+              width: auto;
+              object-fit: contain;
+              display: block;
+            "
           />
         </div>
-        <div>
-          <h6 class="mb-1 text-truncate" style="max-width: 180px">
+
+        <div
+          style="max-width: 160px; min-width: 0"
+          class="overflow-hidden me-2"
+        >
+          <h6
+            id="title-{{ forloop.counter }}"
+            class="mb-1"
+            style="
+              font-size: 1rem;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              line-clamp: 2;
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: normal;
+              word-break: break-word;
+            "
+            title="{{ book.title }}"
+          >
             {{ book.title }}
           </h6>
-          <small class="text-muted">{{ book.author }}</small>
+
+          <small
+            id="author-{{ forloop.counter }}"
+            class="text-muted d-block"
+            style="
+              font-size: 0.85rem;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              line-clamp: 2;
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: normal;
+              word-break: break-word;
+            "
+            title="{{ book.author }}"
+          >
+            {{ book.author }}
+          </small>
         </div>
       </div>
       {% endfor %} {% else %}
@@ -42,10 +100,10 @@
       {% endif %}
     </div>
 
-    <!-- Divider (vertical on md+) -->
+    <!-- Divider -->
     <div class="d-none d-md-block col-md-1 border-start"></div>
 
-    <!-- Book Cart (right column) -->
+    <!-- Book Cart -->
     <div class="col-md-7">
       {% if books %}
       <form method="post" id="bookCartForm">
@@ -58,6 +116,7 @@
             class="form-check-input me-3"
             id="book{{ item.book.id }}"
           />
+
           <div
             style="
               width: 100px;
@@ -69,17 +128,43 @@
             "
           >
             <img
-              src="{{ item.book.cover_image_url|default:'/static/default-cover.png' }}"
+              src="{{ item.book.cover_image.url|default:'/static/default-cover.png' }}"
               alt="{{ item.book.title }}"
               style="width: 100%; height: 100%; object-fit: cover"
             />
           </div>
-          <div class="flex-grow-1" style="max-height: 130px; overflow: hidden">
-            <h5 class="mb-1">{{ item.book.title }}</h5>
-            <p class="mb-1 text-muted small">{{ item.book.author }}</p>
+
+          <div style="width: 320px" class="me-2">
+            <h6
+              id="title-{{ forloop.counter }}"
+              class="mb-1 suggested-title"
+              data-length="{{ item.book.title|length }}"
+              style="
+                font-weight: 600;
+                font-size: 1rem;
+                line-height: 1.3;
+                word-break: break-word;
+              "
+            >
+              {{ item.book.title }}
+            </h6>
+
+            <small
+              id="author-{{ forloop.counter }}"
+              class="text-muted d-block suggested-author"
+              data-length="{{ item.book.author|length }}"
+              style="
+                font-weight: 600;
+                font-size: 0.85rem;
+                line-height: 1.2;
+                word-break: break-word;
+              "
+            >
+              {{ item.book.author }}
+            </small>
           </div>
+
           <div class="d-flex flex-column gap-2 ms-auto">
-            <!-- Remove button -->
             <button
               type="submit"
               name="remove_book"
@@ -90,22 +175,22 @@
               <i class="bi bi-trash"></i> Remove
             </button>
 
-            <!-- Borrow and Request buttons -->
             <button
-              type="submit"
-              name="borrow_book"
-              value="{{ item.book.id }}"
-              class="btn btn-primary btn-sm"
+              type="button"
+              class="btn btn-primary btn-sm borrow-btn"
+              data-book-id="{{ item.book.id }}"
+              data-book-title="{{ item.book.title }}"
             >
               Borrow Book
             </button>
+
             <button
-              type="submit"
-              name="request_booking"
-              value="{{ item.book.id }}"
-              class="btn btn-secondary btn-sm"
+              type="button"
+              class="btn btn-secondary btn-sm reserve-btn"
+              data-book-id="{{ item.book.id }}"
+              data-book-title="{{ item.book.title }}"
             >
-              Request Booking
+              Reserve Book
             </button>
           </div>
         </div>
@@ -125,8 +210,67 @@
   </div>
 </div>
 
+<!-- Borrow Confirmation Modal -->
+<div class="modal fade" id="borrowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Borrow</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>User:</strong> {{ request.user.full_name }}</p>
+        <p><strong>Book:</strong> <span id="modalBookTitle"></span></p>
+      </div>
+      <div class="modal-footer">
+        <form method="post" id="confirmBorrowForm">
+          {% csrf_token %}
+          <input type="hidden" name="borrow_book" id="confirmBookId" />
+          <button type="submit" class="btn btn-primary">Done</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reserve Confirmation Modal -->
+<div class="modal fade" id="reserveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Reservation</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>User:</strong> {{ request.user.full_name }}</p>
+        <p><strong>Book:</strong> <span id="modalReserveBookTitle"></span></p>
+      </div>
+      <div class="modal-footer">
+        <form method="post" id="confirmReserveForm">
+          {% csrf_token %}
+          <input
+            type="hidden"
+            name="request_booking"
+            id="confirmReserveBookId"
+          />
+          <button type="submit" class="btn btn-secondary">Reserve</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-  // Limit checkbox selection to max 3
   const checkboxes = document.querySelectorAll('input[name="selected_books"]');
   checkboxes.forEach((box) => {
     box.addEventListener("change", () => {
@@ -139,5 +283,53 @@
       }
     });
   });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".suggested-title").forEach((titleElem) => {
+      const len = parseInt(titleElem.getAttribute("data-length"), 10);
+      if (len > 30) {
+        titleElem.style.fontSize = "0.85rem";
+      }
+      if (len > 50) {
+        titleElem.style.fontSize = "0.75rem";
+      }
+    });
+
+    document.querySelectorAll(".suggested-author").forEach((authorElem) => {
+      const len = parseInt(authorElem.getAttribute("data-length"), 10);
+      if (len > 20) {
+        authorElem.style.fontSize = "0.75rem";
+      }
+    });
+  });
+
+  document.querySelectorAll(".borrow-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const bookId = btn.getAttribute("data-book-id");
+      const bookTitle = btn.getAttribute("data-book-title");
+
+      document.getElementById("modalBookTitle").textContent = bookTitle;
+      document.getElementById("confirmBookId").value = bookId;
+
+      const modal = new bootstrap.Modal(document.getElementById("borrowModal"));
+      modal.show();
+    });
+  });
+
+  document.querySelectorAll(".reserve-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const bookId = btn.getAttribute("data-book-id");
+      const bookTitle = btn.getAttribute("data-book-title");
+
+      document.getElementById("modalReserveBookTitle").textContent = bookTitle;
+      document.getElementById("confirmReserveBookId").value = bookId;
+
+      const modal = new bootstrap.Modal(
+        document.getElementById("reserveModal")
+      );
+      modal.show();
+    });
+  });
 </script>
+
 {% endblock %}

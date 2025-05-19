@@ -21,7 +21,7 @@
         transform: rotate(180deg);
       "
     >
-      <i id="menuIcon" class="bi bi-arrow-left" style="font-size: 30px"></i>
+      <i id="menuIcon" class="bi bi-arrow-right" style="font-size: 30px"></i>
     </button>
   </div>
 
@@ -30,13 +30,11 @@
     <li class="nav-item mb-2">
       <a
         href="{% url 'user_home' %}"
-        class="nav-link text-dark active"
-        style="font-size: 18px"
         class="nav-link text-dark"
         style="font-size: 18px"
       >
         <i
-          class="bi bi-speedometer2"
+          class="bi bi-journal-bookmark"
           style="color: #0074cc; padding-right: 10px"
         ></i>
         My Bookshelf
@@ -48,8 +46,11 @@
         class="nav-link text-dark"
         style="font-size: 18px"
       >
-        <i class="bi bi-book" style="color: #0074cc; padding-right: 10px"></i>
-        Booking Summary
+        <i
+          class="bi bi-clock-history"
+          style="color: #0074cc; padding-right: 10px"
+        ></i>
+        Borrowing History
       </a>
     </li>
     <li class="nav-item mb-2">
@@ -59,7 +60,7 @@
         style="font-size: 18px"
       >
         <i
-          class="bi bi-upc-scan"
+          class="bi bi-bookshelf"
           style="color: #0074cc; padding-right: 10px"
         ></i>
         Library
@@ -72,7 +73,7 @@
         style="font-size: 18px"
       >
         <i
-          class="bi bi-box-arrow-right"
+          class="bi bi-box-arrow-left"
           style="color: #0074cc; padding-right: 10px"
         ></i>
         Log Out

@@ -3,9 +3,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.utils import timezone
-from django.contrib.auth.hashers import make_password
 from .models import Admin, Staff, LibraryUser, Genre, Book
-from myserver.models import FavoriteBook
+from myserver.models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.text import Truncator
@@ -173,5 +172,37 @@ class FavoriteBookAdmin(admin.ModelAdmin):
     list_filter = ('added_at',)
 
 admin.site.register(FavoriteBook, FavoriteBookAdmin)
+
+class RecentlyViewedAdmin(admin.ModelAdmin):
+    list_display = ('user', 'book', 'viewed_at')
+    search_fields = ('user__email', 'book__title')
+    list_filter = ('viewed_at',)
+    ordering = ('-viewed_at',)
+
+admin.site.register(RecentlyViewed, RecentlyViewedAdmin)
+
+class BookingCartAdmin(admin.ModelAdmin):
+    list_display = ('user', 'book', 'added_at')
+    search_fields = ('user__email', 'book__title')
+    list_filter = ('added_at',)
+    ordering = ('-added_at',)
+
+admin.site.register(BookingCart, BookingCartAdmin)
+
+class BorrowedBookAdmin(admin.ModelAdmin):
+    list_display = ('user', 'book', 'borrowed_at',)
+    search_fields = ('user__email', 'book__title')
+    list_filter = ('borrowed_at',)
+    ordering = ('-borrowed_at',)
+
+admin.site.register(BorrowedBook, BorrowedBookAdmin)
+
+class ReservedBookAdmin(admin.ModelAdmin):
+    list_display = ('user', 'book', 'reserved_at',)
+    search_fields = ('user__email', 'book__title')
+    list_filter = ('reserved_at',)
+    ordering = ('-reserved_at',)
+
+admin.site.register(ReservedBook, ReservedBookAdmin)
 
 # Register other models here if needed

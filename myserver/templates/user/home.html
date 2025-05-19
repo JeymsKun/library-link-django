@@ -1,107 +1,125 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %} {% block content %}
 
-{% block title %}
-  {% if view == "favorites" %}
-    My Favorite Books | Library Link
-  {% elif view == "pending" %}
-    My Pending Books | Library Link
-  {% else %}
-    Recently Viewed Books | Library Link
-  {% endif %}
-{% endblock %}
+<style>
+  .disabled-link {
+    color: #999 !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    text-decoration: none !important;
+  }
 
-{% block content %}
-  {% include 'user/components/appbar.html' %}
-  {% include 'user/components/drawer.html' %}
+  .text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>
 
-  <div class="container-fluid mt-4" style="padding-top: 70px;">
-    <div class="d-flex min-vh-100">
-      
-      <!-- Sidebar -->
-      <div class="sidebar p-3" style="width:240px; border-right:1px solid #ccc">
-        <h4 class="mb-4">Bookshelf Log</h4>
-        <ul class="list-unstyled">
-          
-          <li class="mb-3">
-            <a 
-              href="?view=grid" 
-              class="text-decoration-none text-dark {% if view == "grid" %}fw-bold{% endif %}"
-            >
-              My Recently Viewed
-            </a>
-          </li>
-          
-          <li class="mb-3">
-            <a 
-              href="?view=pending" 
-              class="text-decoration-none text-dark {% if view == "pending" %}fw-bold{% endif %}"
-            >
-              My Pending
-            </a>
-          </li>
-          
-          <li class="mb-3 pb-3 border-bottom">
-            <a 
-              href="?view=favorites" 
-              class="text-decoration-none text-dark {% if view == "favorites" %}fw-bold{% endif %}"
-            >
-              My Favorite
-            </a>
-          </li>
-          
-        </ul>
-      </div>
+<!-- App Bar -->
+{% include 'user/components/appbar.html' %}
 
-      <!-- Main Content -->
-      <div class="flex-fill p-4">
-        <h4 class="mb-4">
-          {% if view == "favorites" %}
-            My Favorite Books
-          {% elif view == "pending" %}
-            My Pending Books
+<!-- Sidebar -->
+{% include 'user/components/drawer.html' %}
+
+<div class="container-fluid mt-4" style="padding-top: 70px">
+  <div class="d-flex min-vh-100">
+    <div class="sidebar p-3" style="width: 240px; border-right: 1px solid #ccc">
+      <h4 class="mb-4">Bookshelf Log</h4>
+      <ul class="list-unstyled">
+        <li class="mb-3">
+          {% if view == 'grid' %}
+          <span class="disabled-link fw-bold">My Recently Viewed</span>
           {% else %}
-            Recently Viewed Books
+          <a
+            href="?view=grid"
+            class="text-decoration-none text-dark {% if view == 'grid' %}fw-bold{% endif %}"
+          >
+            My Recently Viewed
+          </a>
           {% endif %}
-        </h4>
+        </li>
+        <li class="mb-3">
+          <a
+            href="?view=pending"
+            class="text-decoration-none text-dark {% if view == 'pending' %}fw-bold{% endif %}"
+          >
+            My Pending
+          </a>
+        </li>
+        <li class="mb-3 pb-3 border-bottom">
+          <a
+            href="?view=favorites"
+            class="text-decoration-none text-dark {% if view == 'favorites' %}fw-bold{% endif %}"
+          >
+            My Favorite
+          </a>
+        </li>
+      </ul>
+    </div>
 
-        <div class="row g-3">
-          {% for book in book_list %}
-            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-              <div 
-                class="card h-100" 
-                style="cursor:pointer" 
-                onclick="location.href='?view=about&id={{ book.id }}'"
-              >
-                <img 
-                  src="{{ book.cover_image_url }}" 
-                  class="card-img-top" 
-                  style="height:180px; object-fit:cover" 
-                  alt="{{ book.title }}"
-                />
-                <div class="card-body p-2 text-center">
-                  <h6 class="card-title mb-1 text-truncate">{{ book.title }}</h6>
-                  <small class="text-muted text-truncate">{{ book.author }}</small>
-                </div>
+    <div class="flex-fill p-4">
+      {% if view == "favorites" %}
+      <h4 class="mb-4">My Favorite Books</h4>
+      {% elif view == "pending" %}
+      <h4 class="mb-4">My Pending Books</h4>
+      {% else %}
+      <h4 class="mb-4">Recently Viewed Books</h4>
+      {% endif %}
+
+      <div class="row g-3">
+        {% for book in book_list %}
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+          <a
+            href="{% url 'book_detail' book.id %}?from=bookshelf&view={{ view }}"
+            class="text-decoration-none text-dark"
+          >
+            <div class="card h-100" style="cursor: pointer">
+              <img
+                src="{{ book.cover_image.url }}"
+                class="card-img-top"
+                style="height: 180px; object-fit: cover"
+                alt="{{ book.title }}"
+              />
+              <div class="card-body p-2 text-center">
+                <h6
+                  class="card-title mb-1 text-truncate"
+                  title="{{ book.title }}"
+                >
+                  {{ book.title }}
+                </h6>
+                <small
+                  class="text-muted d-block text-truncate"
+                  title="{{ book.author }}"
+                >
+                  {{ book.author }}
+                </small>
               </div>
             </div>
-          {% empty %}
-            <div class="col-12">
-              <p class="text-secondary">No books to display.</p>
-            </div>
-          {% endfor %}
+          </a>
         </div>
-
-        {% if books.has_next %}
-          <div class="text-center mt-4">
-            <a 
-              href="?view={{ view }}&page={{ books.next_page_number }}" 
-              class="btn btn-primary"
-            >
-              Load More
-            </a>
+        {% empty %}
+        <div class="col-12">
+          <div class="d-flex align-items-center ps-3" style="height: 250px">
+            <p class="text-secondary mb-0 fs-5">No books available.</p>
           </div>
-        {% endif %}
+        </div>
+        {% endfor %}
       </div>
+
+      <hr class="my-4" />
+
+      {% if books.has_next %}
+      <div class="text-center mt-4">
+        <a
+          href="?view={{ view }}&page={{ books.next_page_number }}"
+          class="btn btn-primary"
+        >
+          Load More
+        </a>
+      </div>
+      {% endif %}
     </div>
   </div>
+</div>
+
 {% endblock %}

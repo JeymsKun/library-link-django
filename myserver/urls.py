@@ -23,6 +23,8 @@ urlpatterns = [
     path("user/library/", views.user_library, name="user_library"),
     path('user/library/book/<uuid:pk>/', views.book_detail, name='book_detail'),
     path('toggle-favorite/', views.toggle_favorite, name='toggle_favorite'),
+    path('clear-recently-viewed/', views.clear_recently_viewed, name='clear_recently_viewed'),
+    path('add-to-cart/', views.add_to_cart, name='add_to_cart'),
     path('user/book/book-cart/', views.book_cart, name='book_cart'),
     path('user/logout/', views.logout_user, name='logout_user'),
 ]
