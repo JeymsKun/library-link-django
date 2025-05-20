@@ -1,6 +1,7 @@
 # myserver/urls.py
 from django.urls import path
 from django.shortcuts import redirect
+from .views import favorite_books
 from . import views
 
 from rest_framework_simplejwt.views import (
@@ -34,4 +35,5 @@ urlpatterns = [
     path('user/logout/', views.logout_user, name='logout_user'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('user/<int:user_id>/favorite-books/', favorite_books),
 ]

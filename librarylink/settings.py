@@ -27,17 +27,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-pc7=e!%8ny3*2(l56qk@r3bx(#!h^0_3i4t@yu2t1qf_lgwggi'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = False
+DEBUG = False
 
-# ALLOWED_HOSTS = ['3.25.117.239']
+ALLOWED_HOSTS = ['3.25.117.239']
 
-DEBUG = True
+# DEBUG = True
 
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
-    '192.168.1.73', 
-]
+# ALLOWED_HOSTS = [
+#     '127.0.0.1',
+#     'localhost',
+#     '192.168.1.70', 
+# ]
 
 
 MEDIA_URL = '/media/'
@@ -74,11 +74,11 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'BLACKLIST_AFTER_ROTATION': False,
 }
 
 CORS_ALLOWED_ORIGINS = [
-    "http://192.168.1.73:8081", 
+    "http://3.25.117.239:8081", 
     "http://localhost:8081",    
 ]
 

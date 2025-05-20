@@ -1,3 +1,4 @@
+# myserver/serializers.py
 from rest_framework import serializers
 from .models import RecentlyViewed, BookingCart
 from myDjangoAdmin.serializers import BookSerializer

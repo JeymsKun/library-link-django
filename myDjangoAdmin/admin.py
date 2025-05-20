@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import Admin, Staff, LibraryUser, Genre, Book
+from .models import Admin, Staff, LibraryUser, Genre, Book, LibraryUserOutstandingToken
 from myserver.models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -204,5 +204,11 @@ class ReservedBookAdmin(admin.ModelAdmin):
     ordering = ('-reserved_at',)
 
 admin.site.register(ReservedBook, ReservedBookAdmin)
+
+# @admin.register(LibraryUserOutstandingToken)
+# class LibraryUserOutstandingTokenAdmin(admin.ModelAdmin):
+#     list_display = ('user', 'token', 'created_at', 'blacklisted')
+#     search_fields = ('user__email', 'token')
+#     list_filter = ('blacklisted', 'created_at')
 
 # Register other models here if needed

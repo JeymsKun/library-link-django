@@ -1,4 +1,4 @@
-# myDjangoAdmin/auth_backends.py
+# myDjangoAdmin/libraryuserbackend.py
 from django.contrib.auth.backends import BaseBackend
 from myDjangoAdmin.models import LibraryUser
 

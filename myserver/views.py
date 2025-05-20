@@ -16,6 +16,19 @@ from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, Res
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import FavoriteBook
+from myDjangoAdmin.serializers import BookSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def favorite_books(request, user_id):
+    favorites = FavoriteBook.objects.filter(user__id=user_id).select_related('book')
+    books = [fav.book for fav in favorites]
+    serializer = BookSerializer(books, many=True)
+    return Response(serializer.data)
 
 @require_POST
 @user_required
@@ -774,12 +787,18 @@ def add_to_cart(request):
     try:
         book = Book.objects.get(id=book_id)
 
+        if BorrowedBook.objects.filter(user=request.user, book=book).exists():
+            return JsonResponse({'status': 'already_borrowed', 'message': 'You have already borrowed this book.'})
+
+        if ReservedBook.objects.filter(user=request.user, book=book).exists():
+            return JsonResponse({'status': 'already_reserved', 'message': 'You have already reserved this book.'})
+
         cart_item, created = BookingCart.objects.get_or_create(user=request.user, book=book)
 
         if created:
-            return JsonResponse({'status': 'added'})
+            return JsonResponse({'status': 'added', 'message': 'Book added to your cart!'})
         else:
-            return JsonResponse({'status': 'already_exists'})
+            return JsonResponse({'status': 'already_exists', 'message': 'This book is already in your cart.'})
 
     except Book.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Book not found'})

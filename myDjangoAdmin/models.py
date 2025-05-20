@@ -237,6 +237,15 @@ class UserSessionLog(models.Model):
 
     def __str__(self):
         return f"{self.library_user.email} | {self.action} | {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+
+class LibraryUserOutstandingToken(models.Model):
+    user = models.ForeignKey(LibraryUser, on_delete=models.CASCADE)
+    token = models.CharField(max_length=500, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    blacklisted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.email} | {'Blacklisted' if self.blacklisted else 'Active'}"
     
 class Genre(models.Model):
     name = models.CharField(max_length=100)

@@ -199,14 +199,19 @@ Original React (MUI) version had:
     .then(response => response.json())
     .then(data => {
       if (data.status === 'added') {
-        alert('Book added to your cart!');
+        alert(data.message);
       } else if (data.status === 'already_exists') {
-        alert('This book is already in your cart.');
+        alert(data.message);
+      } else if (data.status === 'already_borrowed') {
+        alert(data.message);
+      } else if (data.status === 'already_reserved') {
+        alert(data.message);
       } else {
         alert('Error: ' + data.message);
       }
     });
   });
+
 </script>
 
 {% endblock %}
