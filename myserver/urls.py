@@ -3,6 +3,11 @@ from django.urls import path
 from django.shortcuts import redirect
 from . import views
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 urlpatterns = [
     path('', lambda request: redirect('login/')),
     path('signup/user/email-confirmation/', views.otp_confirm, name='otp_confirm'),
@@ -27,4 +32,6 @@ urlpatterns = [
     path('add-to-cart/', views.add_to_cart, name='add_to_cart'),
     path('user/book/book-cart/', views.book_cart, name='book_cart'),
     path('user/logout/', views.logout_user, name='logout_user'),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

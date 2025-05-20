@@ -11,7 +11,6 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta
 from django.urls import reverse
 from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
 from django.http import JsonResponse
