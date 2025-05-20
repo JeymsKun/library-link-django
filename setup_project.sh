@@ -45,11 +45,5 @@ echo "Saving dependencies to requirements.txt..."
 pip freeze > requirements.txt
 
 echo "Setup complete! Your virtual environment is ready and dependencies are installed."
-
-echo "Setting up automatic activation for the virtual environment..."
-echo "source $(pwd)/venv/bin/activate" >> ~/.bashrc
-echo "Done! Next time you open a new terminal, the virtual environment will activate automatically."
-
-source ~/.bashrc
-
-echo "You're now inside the virtual environment!"
+echo "Activating virtual environment..."
+source venv/bin/activate
