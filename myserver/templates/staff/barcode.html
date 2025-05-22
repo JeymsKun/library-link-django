@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% load static %} {% block content %}
 <!-- Test the inclusion -->
 {% include 'staff/components/appbar.html' %}
 
@@ -7,6 +7,135 @@
 
 <!-- Main content -->
 <div class="container-fluid mt-4" style="padding-top: 70px">
-  <h2>Unavailable</h2>
+  <h3 class="text-center fw-bold mb-4">Scan the Barcode</h3>
+
+  <div id="error-alert" class="alert alert-danger d-none"></div>
+
+  <div class="text-center">
+    <video
+      id="video"
+      autoplay
+      playsinline
+      style="max-width: 100%; border-radius: 8px"
+    ></video>
+    <canvas id="canvas" style="display: none"></canvas>
+    <button id="toggleScan" class="btn btn-primary mt-3">Stop Scanning</button>
+  </div>
+
+  <div class="mt-4">
+    <label for="manualBarcode" class="form-label">Enter Barcode Manually</label>
+    <input
+      type="text"
+      id="manualBarcode"
+      class="form-control"
+      placeholder="Enter barcode"
+    />
+    <button
+      class="btn btn-secondary mt-2"
+      onclick="fetchBook(document.getElementById('manualBarcode').value)"
+    >
+      Submit
+    </button>
+  </div>
+
+  <div id="bookInfo" class="card mt-5 d-none mx-auto" style="max-width: 400px">
+    <img
+      id="coverImage"
+      class="card-img-top"
+      alt="Book Cover"
+      style="height: 300px; object-fit: cover"
+    />
+    <div class="card-body">
+      <h5 id="bookTitle" class="card-title"></h5>
+      <p id="bookAuthor" class="card-text"></p>
+      <p id="bookGenre" class="card-text"></p>
+      <p id="bookISBN" class="card-text"></p>
+      <p id="bookPublished" class="card-text"></p>
+      <p id="bookDescription" class="card-text"></p>
+      <button class="btn btn-success" onclick="resetScanner()">
+        Scan Another
+      </button>
+    </div>
+  </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+<script>
+  let scanning = true;
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const context = canvas.getContext("2d");
+
+  navigator.mediaDevices
+    .getUserMedia({ video: { facingMode: "environment" } })
+    .then((stream) => (video.srcObject = stream))
+    .catch((err) => showError("Camera access denied or not available."));
+
+  document.getElementById("toggleScan").onclick = () => {
+    scanning = !scanning;
+    document.getElementById("toggleScan").textContent = scanning
+      ? "Stop Scanning"
+      : "Start Scanning";
+  };
+
+  function scan() {
+    if (!scanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
+      if (code) {
+        fetchBook(code.data);
+        scanning = false;
+      }
+    }
+    requestAnimationFrame(scan);
+  }
+  requestAnimationFrame(scan);
+
+  function fetchBook(barcode) {
+    if (!barcode) {
+      showError("Please enter a barcode.");
+      return;
+    }
+    fetch(`/api/book/${barcode}/`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Book not found.");
+        return res.json();
+      })
+      .then((data) => showBookInfo(data))
+      .catch((err) => showError(err.message));
+  }
+
+  function showBookInfo(data) {
+    document.getElementById("error-alert").classList.add("d-none");
+    document.getElementById("bookInfo").classList.remove("d-none");
+    document.getElementById("coverImage").src =
+      data.cover_url || "{% static 'default-book-cover.jpg' %}";
+    document.getElementById("bookTitle").textContent = data.title;
+    document.getElementById("bookAuthor").textContent = "By: " + data.author;
+    document.getElementById("bookGenre").textContent = "Genre: " + data.genre;
+    document.getElementById("bookISBN").textContent =
+      "ISBN: " + (data.isbn || "N/A");
+    document.getElementById("bookPublished").textContent =
+      "Published: " + new Date(data.published_date).toDateString();
+    document.getElementById("bookDescription").textContent = data.description;
+  }
+
+  function showError(msg) {
+    const alert = document.getElementById("error-alert");
+    alert.textContent = msg;
+    alert.classList.remove("d-none");
+    setTimeout(() => alert.classList.add("d-none"), 4000);
+  }
+
+  function resetScanner() {
+    document.getElementById("bookInfo").classList.add("d-none");
+    document.getElementById("manualBarcode").value = "";
+    scanning = true;
+    document.getElementById("toggleScan").textContent = "Stop Scanning";
+  }
+</script>
 {% endblock %}

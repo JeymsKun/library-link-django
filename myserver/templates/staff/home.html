@@ -7,7 +7,30 @@
 
 <!-- Main content -->
 <div class="container-fluid mt-4" style="padding-top: 70px">
-  <h2>Welcome, Staff!</h2>
-  <p>Unavailable</p>
+  <div class="container py-4">
+    <!-- Dashboard Cards -->
+    {% include 'staff/components/dashboardcards.html' %}
+
+    <!-- Recent Transactions Table -->
+    {% include 'staff/components/recenttransactionstable.html' %}
+
+    <!-- Booking Requests Table -->
+    {% include 'staff/components/bookingrequeststable.html' %}
+
+    <!-- User Summary Table -->
+    {% include 'staff/components/usersummarytable.html' %}
+
+    <div class="row mt-4">
+      <div class="col-md-6 mb-3">
+        {% include 'staff/components/borrowedtrends.html' %}
+      </div>
+      <div class="col-md-3 mb-3">
+        {% include 'staff/components/bookavailability.html' %}
+      </div>
+      <div class="col-md-3 mb-3">
+        {% include 'staff/components/recentactivityfeed.html' %}
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

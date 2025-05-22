@@ -7,6 +7,101 @@
 
 <!-- Main content -->
 <div class="container-fluid mt-4" style="padding-top: 70px">
-  <h2>Unavailable</h2>
+ <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm" style="background-color: #e7ce85;">
+        <div class="card-body">
+          <h5 class="card-title fw-bold" id="dayName">Monday</h5>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="d-flex gap-2">
+              <span id="fullDate">May 22 Today</span>
+              <span id="currentTime">3:45 PM</span>
+            </div>
+            <i class="bi bi-calendar3 fs-4"></i>
+          </div>
+        </div>
+      </div>
+      <hr>
+    </div>
+
+    <div class="col-auto d-none d-lg-block">
+      <div class="vr h-100"></div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold">RECENT TRANSACTIONS</h5>
+        <select class="form-select w-auto" id="statusFilter">
+          <option value="All">All</option>
+          <option value="Borrowed" class="bg-warning">Borrowed</option>
+          <option value="Returned" class="bg-success">Returned</option>
+          <option value="Overdue" class="bg-danger">Overdue</option>
+        </select>
+      </div>
+      <hr>
+
+      <div class="overflow-auto" style="max-height: 600px;">
+        {% for tx in transactions %}
+        <div class="card mb-3 shadow-sm" style="max-width: 100%;">
+          <div class="card-body">
+            <p class="fw-semibold">📖 Book Title: "{{ tx.display_title }}"</p>
+            <p>👤 Borrower: {{ tx.borrower }}</p>
+            <p>📅 Borrow Date: {{ tx.borrow_date }}</p>
+            <p>🗓️ Due Date: {{ tx.due_date }}</p>
+            <button class="btn btn-sm {% if tx.status == 'overdue' %}btn-danger{% elif tx.status == 'returned' %}btn-success{% elif tx.status == 'borrowed' %}btn-warning{% else %}btn-secondary{% endif %}" onclick="showStatusMessage('{{ tx.status }}')">
+              {{ tx.status|title }}
+            </button>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted">No transactions found.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const updateDateTime = () => {
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+      const now = new Date();
+      const day = dayNames[now.getDay()];
+      const month = monthNames[now.getMonth()];
+      const date = now.getDate();
+      const hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHour = hours % 12 || 12;
+
+      document.getElementById('dayName').textContent = day;
+      document.getElementById('fullDate').textContent = `${month} ${date} Today`;
+      document.getElementById('currentTime').textContent = `${displayHour}:${minutes} ${ampm}`;
+    }
+
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    const filter = document.getElementById('statusFilter');
+    filter.addEventListener('change', () => {
+      const status = filter.value;
+      window.location.href = `?status=${status}`;
+    });
+  });
+
+  function showStatusMessage(status) {
+    let message = '';
+    if (status === 'borrowed') {
+      message = 'The book is still borrowed, waiting for the due date.';
+    } else if (status === 'returned') {
+      message = 'The book is returned on time.';
+    } else if (status === 'overdue') {
+      message = 'This book is overdue. You may want to send a reminder.';
+    }
+    if (message) alert(message);
+  }
+</script>
 </div>
 {% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %} {% block content %}
+
+<div class="container bg-white p-4 rounded shadow">
+  <div class="card p-3">
+    <h5>Borrowing Trends</h5>
+    <canvas id="borrowedTrendsChart"></canvas>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const ctx = document.getElementById("borrowedTrendsChart").getContext("2d");
+    const data = JSON.parse("{{ monthly_counts|safe|escapejs }}");
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ],
+        datasets: [
+          {
+            label: "Books Borrowed",
+            data: data,
+            backgroundColor: "#36a2eb",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "top",
+          },
+        },
+      },
+    });
+  });
+</script>
+
+{% endblock %}

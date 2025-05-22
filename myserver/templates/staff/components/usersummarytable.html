@@ -1,0 +1,100 @@
+{% extends 'base.html' %} {% block content %}
+
+<div class="container-fluid mt-4">
+  <div class="p-4 rounded shadow bg-white">
+    <div
+      class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"
+    >
+      <h2 class="mb-0">List of Users</h2>
+      <div class="d-flex gap-2 flex-wrap">
+        <div class="input-group" style="min-width: 200px; width: 250px">
+          <span
+            class="input-group-text"
+            onclick="searchUsers()"
+            style="cursor: pointer"
+          >
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            id="userSearchInput"
+            class="form-control"
+            type="text"
+            placeholder="Search users..."
+          />
+        </div>
+        <select id="userSortSelect" class="form-select" style="width: 200px">
+          <option value="name">Name</option>
+          <option value="books">Number of Books</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive" style="max-height: 450px; overflow-y: auto">
+      <table class="table table-bordered table-hover">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th class="text-center">Full Name</th>
+            <th class="text-center">List of Books</th>
+            <th class="text-center">Total Books</th>
+          </tr>
+        </thead>
+        <tbody id="userSummaryRows">
+          {% for user in user_summaries %}
+          <tr>
+            <td class="text-center align-middle">{{ user.full_name }}</td>
+            <td>
+              <ul class="list-unstyled mb-0">
+                {% for book in user.borrowed_books %}
+                <li>{{ book.title }}</li>
+                {% endfor %}
+              </ul>
+            </td>
+            <td class="text-center align-middle">
+              {{ user.borrowed_books|length }}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-center">No users found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function searchUsers() {
+    const term = document.getElementById("userSearchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#userSummaryRows tr");
+
+    rows.forEach((row) => {
+      const name = row.children[0]?.textContent.toLowerCase() || "";
+      row.style.display = name.includes(term) ? "" : "none";
+    });
+  }
+
+  document
+    .getElementById("userSortSelect")
+    .addEventListener("change", function () {
+      const rows = Array.from(document.querySelectorAll("#userSummaryRows tr"));
+      const type = this.value;
+
+      rows.sort((a, b) => {
+        const nameA = a.children[0]?.textContent.trim();
+        const nameB = b.children[0]?.textContent.trim();
+        const countA = parseInt(a.children[2]?.textContent.trim()) || 0;
+        const countB = parseInt(b.children[2]?.textContent.trim()) || 0;
+
+        if (type === "name") return nameA.localeCompare(nameB);
+        if (type === "books") return countB - countA;
+      });
+
+      const tbody = document.getElementById("userSummaryRows");
+      tbody.innerHTML = "";
+      rows.forEach((row) => tbody.appendChild(row));
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %} {% block content %}
+
+<div class="container bg-white p-4 rounded shadow">
+  <div class="card p-3">
+    <h5>Book Availability</h5>
+    <canvas id="bookAvailabilityChart"></canvas>
+  </div>
+</div>
+
+<script>
+  (function () {
+    let availableCount = parseInt("{{ available|default:0 }}");
+    let borrowedCount = parseInt("{{ borrowed|default:0 }}");
+    let total = availableCount + borrowedCount;
+
+    let availableLabel =
+      "Available Books " + ((availableCount / total) * 100).toFixed(1) + "%";
+    let borrowedLabel =
+      "Borrowed Books " + ((borrowedCount / total) * 100).toFixed(1) + "%";
+
+    let ctx = document.getElementById("bookAvailabilityChart").getContext("2d");
+    new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: [availableLabel, borrowedLabel],
+        datasets: [
+          {
+            data: [availableCount, borrowedCount],
+            backgroundColor: ["#4bc0c0", "#36a2eb"],
+          },
+        ],
+      },
+    });
+  })();
+</script>
+
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends 'base.html' %} {% block content %}
+
+<div class="container-fluid mt-4" style="padding-top: 10px">
+  <div class="p-4 rounded shadow" style="background-color: white">
+    <div
+      class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4"
+    >
+      <h2 class="mb-0">Recent Activity</h2>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <div class="input-group" style="min-width: 200px; width: 250px">
+          <span
+            class="input-group-text"
+            onclick="searchActivity()"
+            style="cursor: pointer"
+          >
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            id="searchInput"
+            class="form-control"
+            type="text"
+            placeholder="Search by title, name, or email"
+          />
+        </div>
+
+        <select id="sortSelect" class="form-select" style="width: 200px">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th class="text-center">#</th>
+            <th class="text-center">Book Title</th>
+            <th class="text-center">Author</th>
+            <th class="text-center">Date</th>
+            <th class="text-center">ID Number</th>
+            <th class="text-center">Email</th>
+            <th class="text-center">Full Name</th>
+            <th class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="activityRows">
+          {% for activity in recent_activities %}
+          <tr class="cursor-pointer" data-index="{{ forloop.counter }}">
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td class="text-center">{{ activity.book.title }}</td>
+            <td class="text-center">{{ activity.book.author }}</td>
+            <td class="text-center">{{ activity.created_at|date:"M d, Y" }}</td>
+            <td class="text-center">{{ activity.user.id_number }}</td>
+            <td class="text-center text-truncate" style="max-width: 180px">
+              {{ activity.user.email }}
+            </td>
+            <td class="text-center">{{ activity.user.get_full_name }}</td>
+            <td class="text-center">{{ activity.status }}</td>
+          </tr>
+          <tr class="collapse-row d-none" id="detail-{{ forloop.counter }}">
+            <td colspan="8">
+              <div class="p-2">
+                <strong>Book:</strong> {{ activity.book.title }}<br />
+                <strong>Author:</strong> {{ activity.book.author }}<br />
+                <strong>Email:</strong> {{ activity.user.email }}<br />
+                <strong>Activity ID:</strong> {{ activity.id }}<br />
+                <strong>Status:</strong> {{ activity.status }}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center">No recent activities found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function searchActivity() {
+    const term = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#activityRows tr");
+
+    for (let i = 0; i < rows.length; i += 2) {
+      const row = rows[i];
+      const detail = rows[i + 1];
+      const cells = row.querySelectorAll("td");
+      const text = Array.from(cells)
+        .map((td) => td.textContent.toLowerCase())
+        .join(" ");
+      const match = text.includes(term);
+      row.style.display = match ? "" : "none";
+      detail.style.display = match ? "" : "none";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".cursor-pointer").forEach((row) => {
+      row.addEventListener("click", () => {
+        const index = row.dataset.index;
+        const detailRow = document.getElementById(`detail-${index}`);
+
+        document.querySelectorAll(".collapse-row").forEach((r) => {
+          if (r !== detailRow) r.classList.add("d-none");
+        });
+
+        detailRow.classList.toggle("d-none");
+      });
+    });
+
+    document
+      .getElementById("sortSelect")
+      .addEventListener("change", function () {
+        const rows = Array.from(document.querySelectorAll("#activityRows tr"));
+        const pairs = [];
+
+        for (let i = 0; i < rows.length; i += 2) {
+          pairs.push([rows[i], rows[i + 1]]);
+        }
+
+        pairs.sort((a, b) => {
+          const dateA = new Date(a[0].children[3].textContent);
+          const dateB = new Date(b[0].children[3].textContent);
+          return this.value === "newest" ? dateB - dateA : dateA - dateB;
+        });
+
+        const container = document.getElementById("activityRows");
+        container.innerHTML = "";
+        pairs.forEach(([data, detail]) => {
+          container.appendChild(data);
+          container.appendChild(detail);
+        });
+      });
+  });
+</script>
+
+{% endblock %}

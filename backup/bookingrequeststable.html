@@ -1,0 +1,189 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container-fluid mt-4" style="padding-top: 10px">
+  <div
+    class="p-4 rounded shadow bg-white"
+    style="max-width: 1000px; margin: auto"
+  >
+    <!-- Header and controls -->
+    <div
+      class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4"
+    >
+      <h2 class="mb-0">Pending Book Requests</h2>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <!-- Search input -->
+        <div class="input-group" style="min-width: 200px; width: 250px">
+          <span
+            class="input-group-text"
+            onclick="searchRequests()"
+            style="cursor: pointer"
+          >
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            id="searchInput"
+            type="text"
+            class="form-control"
+            placeholder="Search by user or book"
+            onkeyup="searchRequests()"
+          />
+        </div>
+
+        <!-- Sort select -->
+        <select id="sortSelect" class="form-select" style="width: 200px">
+          <option value="newest" selected>Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive" style="max-height: 520px; overflow-y: auto">
+      <table class="table table-bordered table-hover sticky-header">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th class="text-center" style="border-right: 1px solid #dee2e6">
+              User
+            </th>
+            <th class="text-center" style="border-right: 1px solid #dee2e6">
+              Book
+            </th>
+            <th class="text-center" style="border-right: 1px solid #dee2e6">
+              Requested At
+            </th>
+            <th class="text-center" style="border-right: 1px solid #dee2e6">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody id="requestRows">
+          {% for req in booking_requests %}
+          <tr class="cursor-pointer" data-index="{{ forloop.counter }}">
+            <td class="text-center" style="border-right: 1px solid #dee2e6">
+              {{ req.user.full_name|default:"Unknown" }}
+            </td>
+            <td class="text-center" style="border-right: 1px solid #dee2e6">
+              {{ req.book.title|default:"Unknown" }}
+            </td>
+            <td class="text-center" style="border-right: 1px solid #dee2e6">
+              {{ req.requested_at|date:"D, M d, Y" }}
+            </td>
+            <td class="text-center" style="border-right: 1px solid #dee2e6">
+              {{ req.status|capfirst }}
+            </td>
+          </tr>
+          <tr class="collapse-row d-none" id="detail-{{ forloop.counter }}">
+            <td colspan="4" class="p-3 bg-light">
+              <strong>User:</strong> {{ req.user.full_name|default:"Unknown"
+              }}<br />
+              <strong>Book:</strong> {{ req.book.title|default:"Unknown" }}<br />
+              <strong>Status:</strong> {{ req.status|capfirst }}<br />
+              <strong>Request ID:</strong> {{ req.request_id }}<br />
+              <button
+                class="btn btn-primary btn-sm mt-2"
+                onclick="approveRequest('{{ req.request_id }}')"
+              >
+                Approve
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center">No pending requests.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Toggle detail row visibility
+  document.querySelectorAll("#requestRows tr.cursor-pointer").forEach((row) => {
+    row.addEventListener("click", () => {
+      const index = row.dataset.index;
+      const detailRow = document.getElementById(`detail-${index}`);
+
+      // Hide all others
+      document.querySelectorAll(".collapse-row").forEach((r) => {
+        if (r !== detailRow) r.classList.add("d-none");
+      });
+
+      detailRow.classList.toggle("d-none");
+    });
+  });
+
+  // Search filter
+  function searchRequests() {
+    const term = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#requestRows tr");
+
+    for (let i = 0; i < rows.length; i += 2) {
+      const mainRow = rows[i];
+      const detailRow = rows[i + 1];
+      const cells = mainRow.querySelectorAll("td");
+      const text = Array.from(cells)
+        .map((td) => td.textContent.toLowerCase())
+        .join(" ");
+      const match = text.includes(term);
+
+      mainRow.style.display = match ? "" : "none";
+      detailRow.style.display = match
+        ? detailRow.classList.contains("d-none")
+          ? "none"
+          : ""
+        : "none";
+    }
+  }
+
+  // Sort rows by Requested At date
+  document.getElementById("sortSelect").addEventListener("change", function () {
+    const rows = Array.from(document.querySelectorAll("#requestRows tr"));
+    const pairs = [];
+
+    for (let i = 0; i < rows.length; i += 2) {
+      pairs.push([rows[i], rows[i + 1]]);
+    }
+
+    pairs.sort((a, b) => {
+      const dateA = new Date(a[0].children[2].textContent);
+      const dateB = new Date(b[0].children[2].textContent);
+      return this.value === "newest" ? dateB - dateA : dateA - dateB;
+    });
+
+    const container = document.getElementById("requestRows");
+    container.innerHTML = "";
+    pairs.forEach(([mainRow, detailRow]) => {
+      container.appendChild(mainRow);
+      container.appendChild(detailRow);
+    });
+  });
+
+  // Approve button handler
+  function approveRequest(requestId) {
+    if (!confirm("Approve this booking request?")) return;
+
+    fetch("{% url 'approve_booking_request' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ request_id: requestId }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Network response was not ok");
+        return res.json();
+      })
+      .then((data) => {
+        alert(data.message || "Request approved.");
+        // Optionally, refresh or remove row:
+        location.reload();
+      })
+      .catch((err) => {
+        alert("Failed to approve request: " + err.message);
+      });
+  }
+</script>
+{% endblock %}

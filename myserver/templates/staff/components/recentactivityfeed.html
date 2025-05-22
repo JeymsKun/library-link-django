@@ -1,0 +1,15 @@
+{% extends 'base.html' %} {% block content %}
+
+<div class="card p-3" style="min-height: 400px">
+  <h5>Recent Activity Feed</h5>
+  {% if activities %} {% for activity in activities %}
+  <div class="mb-2">
+    <div class="small">{{ activity.text }}</div>
+    <div class="text-muted small">{{ activity.time|timesince }} ago</div>
+  </div>
+  {% endfor %} {% else %}
+  <p class="text-muted small">No recent activities available.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
