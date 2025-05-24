@@ -24,10 +24,48 @@ from rest_framework import status
 from .serializers import LibraryUserTokenObtainPairSerializer
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework import serializers
-from myDjangoAdmin.models import LibraryUser
+from myDjangoAdmin.models import LibraryUser, Genre
+from django.db.models import Q
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.http import JsonResponse
+from .serializers import GenreSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def favorite_books(request, user_id):
+    favorites = FavoriteBook.objects.filter(user__id=user_id).select_related('book')
+    books = [fav.book for fav in favorites]
+    serializer = BookSerializer(books, many=True)
+    return Response(serializer.data)
+
+@api_view(["GET"])
+def genre_list(request):
+    genres = Genre.objects.all().order_by('name')
+    return Response(GenreSerializer(genres, many=True).data)
+
+@api_view(["GET"])
+def books_by_genre(request):
+    search = request.GET.get("search", "")
+    user_id = request.GET.get("user_id")
+
+    data = {}
+    for genre in Genre.objects.all():
+        books = Book.objects.filter(genres=genre)
+        if search:
+            books = books.filter(Q(title__icontains=search) | Q(author__icontains=search))
+
+        books_data = BookSerializer(books, many=True, context={"request": request}).data
+
+        if user_id:
+            favorite_ids = FavoriteBook.objects.filter(user_id=user_id).values_list("book_id", flat=True)
+            for book in books_data:
+                book["is_favorite"] = book["id"] in favorite_ids
+
+        data[genre.name] = books_data
+
+    return Response(data)
+
 
 def api_root(request):
     return JsonResponse({"message": "LibraryLink Expo API is running."})

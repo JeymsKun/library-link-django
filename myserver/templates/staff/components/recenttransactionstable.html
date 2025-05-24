@@ -62,11 +62,15 @@
           <tr class="collapse-row d-none" id="detail-{{ forloop.counter }}">
             <td colspan="8">
               <div class="p-2">
+                {% if activity.book %}
                 <strong>Book:</strong> {{ activity.book.title }}<br />
                 <strong>Author:</strong> {{ activity.book.author }}<br />
+                {% endif %}
                 <strong>Email:</strong> {{ activity.user.email }}<br />
                 <strong>Activity ID:</strong> {{ activity.id }}<br />
-                <strong>Status:</strong> {{ activity.status }}
+                <strong>Status:</strong> {{ activity.status }}<br />
+                <strong>Date:</strong> {{ activity.created_at|date:"M d, Y H:i"
+                }}
               </div>
             </td>
           </tr>

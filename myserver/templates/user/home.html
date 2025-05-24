@@ -13,6 +13,17 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .alert-message-container {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1050;
+    width: auto;
+    max-width: 90%;
+    min-width: 300px;
+  }
 </style>
 
 <!-- App Bar -->
@@ -20,6 +31,27 @@
 
 <!-- Sidebar -->
 {% include 'user/components/drawer.html' %}
+
+<!-- Message Alert -->
+
+{% if messages %}
+<div class="alert-message-container">
+  {% for message in messages %}
+  <div
+    class="alert alert-{{ message.tags }} alert-dismissible fade show shadow"
+    role="alert"
+  >
+    {{ message }}
+    <button
+      type="button"
+      class="btn-close"
+      data-bs-dismiss="alert"
+      aria-label="Close"
+    ></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <div class="container-fluid mt-4" style="padding-top: 70px">
   <div class="d-flex min-vh-100">

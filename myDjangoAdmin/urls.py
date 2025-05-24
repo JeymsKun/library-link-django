@@ -13,6 +13,7 @@ urlpatterns = [
     path('user/<int:user_id>/pending-books/', UserPendingBooksAPIView.as_view(), name='user-pending-books'),
     path('user/<int:user_id>/books/<uuid:book_id>/', UserBookDetailAPIView.as_view(), name='user-book-detail'), 
     path('user/<int:user_id>/favorite-books/', UserFavoriteBooksAPIView.as_view(), name='user-favorite-books'),
+
 ]
 
 

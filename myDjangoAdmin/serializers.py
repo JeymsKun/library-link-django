@@ -1,7 +1,12 @@
 # myDjangoAdmin/serializers.py
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from myDjangoAdmin.models import LibraryUser, Book, LibraryUserOutstandingToken
+from myDjangoAdmin.models import LibraryUser, Book, Genre, LibraryUserOutstandingToken
 from rest_framework import serializers
+
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ['id', 'name']
 
 class LibraryUserSerializer(serializers.ModelSerializer):
     class Meta:

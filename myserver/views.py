@@ -22,8 +22,67 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import FavoriteBook
-from myDjangoAdmin.serializers import BookSerializer
-from django.contrib.auth.decorators import login_required
+from myDjangoAdmin.serializers import BookSerializer, GenreSerializer
+from itertools import chain
+from operator import attrgetter
+from types import SimpleNamespace
+
+def approve_reserved_book(request, reserved_book_id):
+    reserved_book = get_object_or_404(ReservedBook, id=reserved_book_id)
+    reserved_book.status = 'approved'
+    reserved_book.save()
+
+    messages.success(request, f"Your reservation for '{reserved_book.book.title}' has been approved by staff.")
+
+    return redirect(request, 'user/home.html')  
+
+def recent_activity_view(request):
+    borrowed = BorrowedBook.objects.select_related('user', 'book').annotate_status("Borrowed")
+    viewed = RecentlyViewed.objects.select_related('user', 'book').annotate_status("Viewed")
+    sessions = UserSessionLog.objects.select_related('library_user').annotate_status("Session")
+
+    borrowed = [
+        SimpleNamespace(
+            book=b.book,
+            user=b.user,
+            status="Borrowed",
+            created_at=b.borrowed_at,
+            id=b.id
+        )
+        for b in borrowed
+    ]
+
+    viewed = [
+        SimpleNamespace(
+            book=v.book,
+            user=v.user,
+            status="Viewed",
+            created_at=v.viewed_at,
+            id=v.id
+        )
+        for v in viewed
+    ]
+
+    sessions = [
+        SimpleNamespace(
+            book=None,
+            user=s.library_user,
+            status=s.action,
+            created_at=s.timestamp,
+            id=s.id
+        )
+        for s in sessions
+    ]
+
+    combined_activities = sorted(
+        chain(borrowed, viewed, sessions),
+        key=attrgetter("created_at"),
+        reverse=True
+    )[:30]  
+
+    return render(request, "staff/components/recenttransactionstable.html", {
+        "recent_activities": combined_activities,
+    })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -32,6 +91,34 @@ def favorite_books(request, user_id):
     books = [fav.book for fav in favorites]
     serializer = BookSerializer(books, many=True)
     return Response(serializer.data)
+
+@api_view(["GET"])
+def genre_list(request):
+    genres = Genre.objects.all().order_by('name')
+    return Response(GenreSerializer(genres, many=True).data)
+
+@api_view(["GET"])
+def books_by_genre(request):
+    search = request.GET.get("search", "")
+    user_id = request.GET.get("user_id")
+
+    data = {}
+    for genre in Genre.objects.all():
+        books = Book.objects.filter(genres=genre)
+        if search:
+            books = books.filter(Q(title__icontains=search) | Q(author__icontains=search))
+
+        books_data = BookSerializer(books, many=True, context={"request": request}).data
+
+        # Optionally, mark favorite if user_id is present
+        if user_id:
+            favorite_ids = FavoriteBook.objects.filter(user_id=user_id).values_list("book_id", flat=True)
+            for book in books_data:
+                book["is_favorite"] = book["id"] in favorite_ids
+
+        data[genre.name] = books_data
+
+    return Response(data)
 
 @require_POST
 @user_required
@@ -703,8 +790,6 @@ def user_home(request):
 @user_required
 def user_borrowinghistory(request):
     user = request.user
-    now = timezone.now()
-    due_soon_threshold = now + timedelta(days=3)
 
     borrowed = BorrowedBook.objects.filter(user=user).select_related('book')
     reserved = ReservedBook.objects.filter(user=user, status='approved').select_related('book')
@@ -712,27 +797,22 @@ def user_borrowinghistory(request):
     history_items = []
 
     for item in borrowed:
-        borrowed_date = item.borrowed_at
-        due_date = borrowed_date + timedelta(days=7)
-        tag = "Due Soon" if due_date <= due_soon_threshold else "Borrowed"
         history_items.append({
             'title': item.book.title,
             'author': item.book.author,
-            'borrowed_at': borrowed_date,
-            'due_date': due_date,
-            'tag': tag,
+            'activity_date': item.borrowed_at,  
+            'tag': "Borrowed",
         })
 
     for item in reserved:
         history_items.append({
             'title': item.book.title,
             'author': item.book.author,
-            'borrowed_at': item.reserved_at,
-            'due_date': None,
+            'activity_date': item.reserved_at, 
             'tag': "Reserved",
         })
 
-    history_items.sort(key=lambda x: x['borrowed_at'], reverse=True)
+    history_items.sort(key=lambda x: x['activity_date'], reverse=True) 
 
     return render(request, 'user/borrowinghistory.html', {
         'appbar_title': 'My Borrowing History',
@@ -871,30 +951,30 @@ def book_cart(request):
 
         elif 'request_booking' in request.POST:
             book_id = request.POST.get('request_booking')
-
             try:
                 cart_item = BookingCart.objects.get(user=user, book_id=book_id)
 
                 reserved, created = ReservedBook.objects.get_or_create(
                     user=user,
                     book=cart_item.book,
-                    defaults={'reserved_at': timezone.now()}
+                    defaults={'reserved_at': timezone.now(), 'status': 'pending'}
                 )
 
                 if created:
                     cart_item.delete()
-                    messages.success(request, f"You reserved '{cart_item.book.title}'.")
+                    messages.info(request, f"You have reserved '{cart_item.book.title}'. Please wait for staff approval.")
                 else:
-                    messages.warning(request, f"You already reserved '{cart_item.book.title}'.")
+                    if reserved.status == 'pending':
+                        messages.warning(request, f"Your reservation for '{reserved.book.title}' is still pending.")
+                    elif reserved.status == 'approved':
+                        messages.success(request, f"Your reservation for '{reserved.book.title}' has been approved!")
+                    else:
+                        messages.error(request, f"Your reservation for '{reserved.book.title}' was rejected.")
 
             except BookingCart.DoesNotExist:
                 messages.error(request, "Book not found in your cart.")
-
             return redirect('book_cart')
 
-        elif 'request_booking' in request.POST:
-            messages.info(request, "Booking request submitted (mock action).")
-            return redirect('book_cart')
 
     cart_items = BookingCart.objects.filter(user=user).select_related('book')
     suggested_books = list(Book.objects.order_by('?')[:5])

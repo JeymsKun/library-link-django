@@ -6,6 +6,19 @@
 <!-- Sidebar -->
 {% include 'user/components/drawer.html' %}
 
+<style>
+  .alert-message-container {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1050;
+    width: auto;
+    max-width: 90%;
+    min-width: 300px;
+  }
+</style>
+
 <!-- Back Button -->
 <div class="container-fluid mt-2 mb-4" style="padding-top: 70px">
   <a
@@ -16,6 +29,25 @@
     ← Back to Bookshelf
   </a>
 </div>
+
+{% if messages %}
+<div class="alert-message-container">
+  {% for message in messages %}
+  <div
+    class="alert alert-{{ message.tags }} alert-dismissible fade show shadow"
+    role="alert"
+  >
+    {{ message }}
+    <button
+      type="button"
+      class="btn-close"
+      data-bs-dismiss="alert"
+      aria-label="Close"
+    ></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <div class="container-fluid mt-4">
   <div class="row flex-row">

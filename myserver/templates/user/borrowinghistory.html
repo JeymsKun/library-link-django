@@ -19,8 +19,10 @@
     >
   </div>
 
-  {% if history_items %} {% regroup history_items by borrowed_at|date:"F Y" as
-  month_list %}
+  {% if history_items %}
+
+  <!-- Grouping history items by month -->
+  {% regroup history_items by activity_date|date:"F Y" as month_list %}
   <div class="timeline">
     {% for month in month_list %}
     <h5
@@ -42,13 +44,13 @@
           <h6 class="fw-semibold mb-1">{{ item.title }}</h6>
           <p class="mb-1">
             <strong>Author:</strong> {{ item.author|default:"N/A" }}<br />
-            <strong>{{ item.tag }}:</strong> {{ item.borrowed_at|date:"M d, Y"
-            }}<br />
-            {% if item.due_date %}
-            <strong>Due:</strong> {{ item.due_date|date:"M d, Y" }}<br />
-            {% endif %}
+
+            <strong>{{ item.tag }}:</strong>
+
+            <!-- Displaying the date based on the tag -->
+            {{ item.activity_date|date:"M d,Y"}}<br />
             <span
-              class="badge {% if item.tag == 'Due Soon' %}bg-danger {% elif item.tag == 'Reserved' %}bg-warning text-dark {% else %}bg-secondary {% endif %}"
+              class="badge {% if item.tag == 'Reserved' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"
             >
               {{ item.tag }}
             </span>
