@@ -198,9 +198,9 @@ class BorrowedBookAdmin(admin.ModelAdmin):
 admin.site.register(BorrowedBook, BorrowedBookAdmin)
 
 class ReservedBookAdmin(admin.ModelAdmin):
-    list_display = ('user', 'book', 'reserved_at',)
+    list_display = ('user', 'book', 'reserved_at', 'status') 
     search_fields = ('user__email', 'book__title')
-    list_filter = ('reserved_at',)
+    list_filter = ('reserved_at', 'status')  
     ordering = ('-reserved_at',)
 
 admin.site.register(ReservedBook, ReservedBookAdmin)

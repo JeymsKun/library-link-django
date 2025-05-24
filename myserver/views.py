@@ -1,5 +1,5 @@
 # myserver/views.
-import os, certifi, uuid, base64
+import os, certifi, uuid, base64, json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -11,16 +11,19 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
 from django.conf import settings
 from django.utils import timezone
+from datetime import timedelta
 from django.urls import reverse
 from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from rest_framework.decorators import api_view, permission_classes
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import FavoriteBook
 from myDjangoAdmin.serializers import BookSerializer
+from django.contrib.auth.decorators import login_required
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -82,6 +85,21 @@ def otp_confirm(request):
 def login_page(request):
     return render(request, "myserver/login.html")
 
+def about(request):
+    return render(request, 'myserver/about.html')
+
+def privacy_policy(request):
+    return render(request, 'myserver/privacypolicy.html', {'page_title': 'Privacy Policy'})
+
+def terms_of_service(request):
+    return render(request, 'myserver/termsofservice.html', {'page_title': 'Terms of Service'})
+
+def report_issue(request):
+    return render(request, 'myserver/reportissue.html', {'page_title': 'Report an Issue'})
+
+def help(request):
+    return render(request, 'myserver/help.html', {'page_title': 'Help'})
+
 def login_staff(request):
     if request.method == 'POST':
         staff_id = request.POST.get('staff_id')
@@ -124,7 +142,77 @@ def login_staff(request):
 
 @staff_required
 def staff_home(request):
-    return render(request, 'staff/home.html', { 'appbar_title': 'Dashboard' })
+    user_summaries = []
+    total_books = Book.objects.count()
+    borrowed = BorrowedBook.objects.count()
+    unreturned = BorrowedBook.objects.count() 
+    users = LibraryUser.objects.count()
+
+    for user in LibraryUser.objects.all():
+        borrowed_books = BorrowedBook.objects.filter(user=user).select_related('book')
+        reserved_books = ReservedBook.objects.filter(user=user).select_related('book')
+
+        all_books = list({b.book for b in borrowed_books}.union({r.book for r in reserved_books}))
+
+        user_summaries.append({
+            'full_name': user.full_name,
+            'books': all_books,
+            'total_books': len(all_books),
+        })
+
+    booking_requests = ReservedBook.objects.filter(status='pending').select_related('user', 'book')
+
+    context = {
+        'user_summaries': user_summaries,
+        'total_books': total_books,
+        'borrowed': borrowed,
+        'unreturned': unreturned,
+        'users': users,
+        'appbar_title': 'Dashboard' ,
+        'booking_requests': booking_requests,
+    }
+    return render(request, 'staff/home.html', context)
+
+@staff_required
+def booking_requests_view(request):
+    booking_requests = ReservedBook.objects.filter(status='pending').select_related('user', 'book')
+    return render(request, 'staff/components/bookingrequeststable.html', {'booking_requests': booking_requests})
+
+@staff_required
+@require_POST
+@csrf_exempt  
+def approve_request(request):
+    try:
+        data = json.loads(request.body)
+        request_id = data.get('request_id')
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'success': False, 'error': 'Invalid data'})
+
+    try:
+        reservation = ReservedBook.objects.get(id=request_id, status='pending')
+        reservation.status = 'approved'
+        reservation.save()
+        return JsonResponse({'success': True})
+    except ReservedBook.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Request not found or already processed'})
+
+@staff_required
+@require_POST
+@csrf_exempt
+def cancel_request(request):
+    try:
+        data = json.loads(request.body)
+        request_id = data.get('request_id')
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'success': False, 'error': 'Invalid data'})
+
+    try:
+        reservation = ReservedBook.objects.get(id=request_id, status='pending')
+        reservation.status = 'cancelled'
+        reservation.save()
+        return JsonResponse({'success': True})
+    except ReservedBook.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Request not found or already processed'})
 
 @staff_required
 def staff_addbook(request):
@@ -161,7 +249,7 @@ def staff_transaction(request):
 def staff_booklist(request):
     books = Book.objects.prefetch_related('genres').all().order_by('-created_at')
     genres = Genre.objects.all()
-    return render(request, 'staff/listofbooks.html', {'books': books, 'genres': genres, 'appbar_title': 'List of Books'})  
+    return render(request, 'staff/listofbooks.html', {'books': books, 'genres': genres, 'appbar_title': 'Book Inventory'})  
 
 def login_user(request):
     if request.method == 'POST':
@@ -613,8 +701,47 @@ def user_home(request):
     })
 
 @user_required
-def user_booking(request):
-    return render(request, 'user/bookingsummary.html', { 'appbar_title': 'Booking Summary' })
+def user_borrowinghistory(request):
+    user = request.user
+    now = timezone.now()
+    due_soon_threshold = now + timedelta(days=3)
+
+    borrowed = BorrowedBook.objects.filter(user=user).select_related('book')
+    reserved = ReservedBook.objects.filter(user=user, status='approved').select_related('book')
+
+    history_items = []
+
+    for item in borrowed:
+        borrowed_date = item.borrowed_at
+        due_date = borrowed_date + timedelta(days=7)
+        tag = "Due Soon" if due_date <= due_soon_threshold else "Borrowed"
+        history_items.append({
+            'title': item.book.title,
+            'author': item.book.author,
+            'borrowed_at': borrowed_date,
+            'due_date': due_date,
+            'tag': tag,
+        })
+
+    for item in reserved:
+        history_items.append({
+            'title': item.book.title,
+            'author': item.book.author,
+            'borrowed_at': item.reserved_at,
+            'due_date': None,
+            'tag': "Reserved",
+        })
+
+    history_items.sort(key=lambda x: x['borrowed_at'], reverse=True)
+
+    return render(request, 'user/borrowinghistory.html', {
+        'appbar_title': 'My Borrowing History',
+        'history_items': history_items,
+    })
+
+@user_required
+def user_barcode(request):
+    return render(request, 'user/barcode.html', { 'appbar_title': 'Barcode' })
 
 @user_required
 def user_library(request):
@@ -699,7 +826,7 @@ def book_detail(request, pk):
         'images': images,
         'barcode_url': barcode_url,
         'is_favorite': is_favorite,
-        'appbar_title': 'About This Book',
+        'appbar_title': 'About this Book',
         'from_page': from_page,
         'view_name': view_name,
     }
@@ -848,6 +975,19 @@ def logout_user(request):
     logout(request)
     return redirect('login_user') 
 
+def about(request):
+    return render(request, 'myserver/about.html')
 
+def privacy_policy(request):
+    return render(request, 'myserver/privacypolicy.html', {'page_title': 'Privacy Policy'})
+
+def terms_of_service(request):
+    return render(request, 'myserver/termsofservice.html', {'page_title': 'Terms of Service'})
+
+def report_issue(request):
+    return render(request, 'myserver/reportissue.html', {'page_title': 'Report an Issue'})
+
+def help(request):
+    return render(request, 'myserver/help.html', {'page_title': 'Help'})
 
 # Create your views here.

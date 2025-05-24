@@ -1,4 +1,5 @@
-{% extends 'base.html' %} {% block content %}
+{% block content %}
+
 <div class="container-fluid mt-4" style="padding-top: 10px">
   <div
     class="p-4 rounded shadow bg-white"
@@ -8,7 +9,7 @@
     <div
       class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4"
     >
-      <h2 class="mb-0">Pending Book Requests</h2>
+      <h4 class="mb-0">Pending Book Requests</h4>
 
       <div class="d-flex gap-2 flex-wrap">
         <!-- Search input -->
@@ -54,42 +55,41 @@
             <th class="text-center" style="border-right: 1px solid #dee2e6">
               Status
             </th>
+            <th class="text-center">Action</th>
           </tr>
         </thead>
         <tbody id="requestRows">
           {% for req in booking_requests %}
-          <tr class="cursor-pointer" data-index="{{ forloop.counter }}">
-            <td class="text-center" style="border-right: 1px solid #dee2e6">
+          <tr>
+            <td class="text-center">
               {{ req.user.full_name|default:"Unknown" }}
             </td>
-            <td class="text-center" style="border-right: 1px solid #dee2e6">
-              {{ req.book.title|default:"Unknown" }}
+            <td class="text-center">{{ req.book.title|default:"Unknown" }}</td>
+            <td
+              class="text-center"
+              data-timestamp="{{ req.reserved_at|date:'Y-m-d H:i:s' }}"
+            >
+              {{ req.reserved_at|date:"D, M d, Y" }}
             </td>
-            <td class="text-center" style="border-right: 1px solid #dee2e6">
-              {{ req.requested_at|date:"D, M d, Y" }}
-            </td>
-            <td class="text-center" style="border-right: 1px solid #dee2e6">
-              {{ req.status|capfirst }}
-            </td>
-          </tr>
-          <tr class="collapse-row d-none" id="detail-{{ forloop.counter }}">
-            <td colspan="4" class="p-3 bg-light">
-              <strong>User:</strong> {{ req.user.full_name|default:"Unknown"
-              }}<br />
-              <strong>Book:</strong> {{ req.book.title|default:"Unknown" }}<br />
-              <strong>Status:</strong> {{ req.status|capfirst }}<br />
-              <strong>Request ID:</strong> {{ req.request_id }}<br />
+            <td class="text-center">{{ req.status|capfirst }}</td>
+            <td class="text-center">
               <button
-                class="btn btn-primary btn-sm mt-2"
-                onclick="approveRequest('{{ req.request_id }}')"
+                class="btn btn-sm btn-success me-2"
+                onclick="approveRequest('{{ req.id }}')"
               >
                 Approve
+              </button>
+              <button
+                class="btn btn-sm btn-danger"
+                onclick="cancelRequest('{{ req.id }}')"
+              >
+                Cancel
               </button>
             </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4" class="text-center">No pending requests.</td>
+            <td colspan="5" class="text-center">No pending requests.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -99,22 +99,37 @@
 </div>
 
 <script>
-  // Toggle detail row visibility
-  document.querySelectorAll("#requestRows tr.cursor-pointer").forEach((row) => {
-    row.addEventListener("click", () => {
-      const index = row.dataset.index;
-      const detailRow = document.getElementById(`detail-${index}`);
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie("csrftoken");
 
-      // Hide all others
-      document.querySelectorAll(".collapse-row").forEach((r) => {
-        if (r !== detailRow) r.classList.add("d-none");
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".cursor-pointer").forEach((row) => {
+      row.addEventListener("click", () => {
+        const index = row.dataset.index;
+        const detailRow = document.getElementById(`detail-${index}`);
+
+        document.querySelectorAll(".collapse-row").forEach((r) => {
+          if (r !== detailRow) r.classList.add("d-none");
+        });
+
+        detailRow.classList.toggle("d-none");
       });
-
-      detailRow.classList.toggle("d-none");
     });
   });
 
-  // Search filter
   function searchRequests() {
     const term = document.getElementById("searchInput").value.toLowerCase();
     const rows = document.querySelectorAll("#requestRows tr");
@@ -137,7 +152,6 @@
     }
   }
 
-  // Sort rows by Requested At date
   document.getElementById("sortSelect").addEventListener("change", function () {
     const rows = Array.from(document.querySelectorAll("#requestRows tr"));
     const pairs = [];
@@ -147,8 +161,8 @@
     }
 
     pairs.sort((a, b) => {
-      const dateA = new Date(a[0].children[2].textContent);
-      const dateB = new Date(b[0].children[2].textContent);
+      const dateA = new Date(a[0].children[2].dataset.timestamp);
+      const dateB = new Date(b[0].children[2].dataset.timestamp);
       return this.value === "newest" ? dateB - dateA : dateA - dateB;
     });
 
@@ -159,5 +173,52 @@
       container.appendChild(detailRow);
     });
   });
+
+  function approveRequest(requestId) {
+    if (!confirm("Are you sure you want to approve this request?")) return;
+
+    fetch("{% url 'approve_request' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      },
+      body: JSON.stringify({ request_id: requestId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Request approved!");
+          location.reload();
+        } else {
+          alert("Error: " + (data.error || "Unknown error"));
+        }
+      })
+      .catch(() => alert("Failed to approve request. Please try again."));
+  }
+
+  function cancelRequest(requestId) {
+    if (!confirm("Are you sure you want to cancel this request?")) return;
+
+    fetch("{% url 'cancel_request' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      },
+      body: JSON.stringify({ request_id: requestId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          alert("Request cancelled.");
+          location.reload();
+        } else {
+          alert("Error: " + (data.error || "Unknown error"));
+        }
+      })
+      .catch(() => alert("Failed to cancel request. Please try again."));
+  }
 </script>
+
 {% endblock %}

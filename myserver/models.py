@@ -52,9 +52,16 @@ class BorrowedBook(models.Model):
         return f"{self.user.email} borrowed {self.book.title}"
 
 class ReservedBook(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('cancelled', 'Cancelled'),
+    ]
+
     user = models.ForeignKey(LibraryUser, on_delete=models.CASCADE, related_name='reserved_books')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reserved_instances')
     reserved_at = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     class Meta:
         unique_together = ('user', 'book')

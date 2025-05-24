@@ -1,6 +1,6 @@
-{% extends 'base.html' %} {% block content %}
+{% block content %}
 
-<div class="card p-3" style="min-height: 400px">
+<div class="card p-3 shadow" style="min-height: 400px">
   <h5>Recent Activity Feed</h5>
   {% if activities %} {% for activity in activities %}
   <div class="mb-2">

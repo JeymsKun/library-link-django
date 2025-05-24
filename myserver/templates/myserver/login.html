@@ -65,15 +65,32 @@ Link{% endblock %} {% block content %}
     </div>
   </div>
 
-  <!-- Footer Links (moved to bottom) -->
+  <!-- Footer Links -->
   <div
     class="mt-4 d-flex flex-wrap justify-content-center gap-3 text-center small text-secondary"
+    style="border-top: 1px solid #ddd; padding-top: 1rem"
   >
-    <a class="text-decoration-none text-secondary">About Library Link</a>
-    <a class="text-decoration-none text-secondary">Privacy Policy</a>
-    <a class="text-decoration-none text-secondary">Terms of Service</a>
-    <a class="text-decoration-none text-secondary">Report an issue</a>
-    <a class="text-decoration-none text-secondary">Help</a>
+    <a href="{% url 'about' %}" class="text-decoration-none text-secondary"
+      >About Library Link</a
+    >
+    <a
+      href="{% url 'privacy_policy' %}"
+      class="text-decoration-none text-secondary"
+      >Privacy Policy</a
+    >
+    <a
+      href="{% url 'terms_of_service' %}"
+      class="text-decoration-none text-secondary"
+      >Terms of Service</a
+    >
+    <a
+      href="{% url 'report_issue' %}"
+      class="text-decoration-none text-secondary"
+      >Report an Issue</a
+    >
+    <a href="{% url 'help' %}" class="text-decoration-none text-secondary"
+      >Help</a
+    >
   </div>
 </div>
 {% endblock %}

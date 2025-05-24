@@ -1,11 +1,11 @@
-{% extends 'base.html' %} {% block content %}
+{% block content %}
 
 <div class="container-fluid mt-4">
   <div class="p-4 rounded shadow bg-white">
     <div
       class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"
     >
-      <h2 class="mb-0">List of Users</h2>
+      <h4 class="mb-0">List of Users</h4>
       <div class="d-flex gap-2 flex-wrap">
         <div class="input-group" style="min-width: 200px; width: 250px">
           <span
@@ -22,10 +22,6 @@
             placeholder="Search users..."
           />
         </div>
-        <select id="userSortSelect" class="form-select" style="width: 200px">
-          <option value="name">Name</option>
-          <option value="books">Number of Books</option>
-        </select>
       </div>
     </div>
 
@@ -44,14 +40,14 @@
             <td class="text-center align-middle">{{ user.full_name }}</td>
             <td>
               <ul class="list-unstyled mb-0">
-                {% for book in user.borrowed_books %}
+                {% for book in user.books %}
                 <li>{{ book.title }}</li>
+                {% empty %}
+                <li><em>No books</em></li>
                 {% endfor %}
               </ul>
             </td>
-            <td class="text-center align-middle">
-              {{ user.borrowed_books|length }}
-            </td>
+            <td class="text-center align-middle">{{ user.total_books }}</td>
           </tr>
           {% empty %}
           <tr>

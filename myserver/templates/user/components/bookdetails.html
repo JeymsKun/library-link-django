@@ -1,17 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<!-- Original MUI React component was converted to this Bootstrap + Django template -->
-
-<!-- 
-Original React (MUI) version had:
-- Image carousel with next/back buttons
-- Loading skeletons
-- Favorite (heart) toggle button
-- Add to booking cart button with disabled state if no copies
-- Barcode image display
-- Dialog for full image preview
--->
 
 <!-- Test the inclusion -->
 {% include 'user/components/appbar.html' with show_favorite=True %}
@@ -132,7 +121,7 @@ Original React (MUI) version had:
       {% if barcode_url %}
       <div class="mt-4">
         <h6>Barcode:</h6>
-        <img src="{{ barcode_url }}" alt="Barcode" style="max-width: 250px; height: auto;">
+        <img src="{{ barcode_url }}" alt="Barcode" style="max-width: 350px; height: auto;">
       </div>
       {% else %}
       <p class="text-danger">Barcode image not available</p>

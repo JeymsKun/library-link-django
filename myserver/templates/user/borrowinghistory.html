@@ -1,0 +1,85 @@
+{% extends 'base.html' %} {% block content %}
+<!-- App Bar -->
+{% include 'user/components/appbar.html' %}
+
+<!-- Sidebar -->
+{% include 'user/components/drawer.html' %}
+
+<div class="container-fluid" style="padding-top: 90px; max-width: 1000px">
+  <div
+    class="mb-4 border-bottom pb-2 d-flex justify-content-between align-items-center"
+  >
+    <div>
+      <p class="text-muted mb-0">
+        A timeline of your past and current book borrowings
+      </p>
+    </div>
+    <span class="text-muted small"
+      ><i class="bi bi-sort-down"></i> Sorted by newest</span
+    >
+  </div>
+
+  {% if history_items %} {% regroup history_items by borrowed_at|date:"F Y" as
+  month_list %}
+  <div class="timeline">
+    {% for month in month_list %}
+    <h5
+      class="mt-4 border-start border-3 ps-3 border-primary d-flex justify-content-between align-items-center"
+    >
+      {{ month.grouper }}
+      <span class="text-muted small">↑ Newest first</span>
+    </h5>
+    <ul
+      class="list-unstyled ps-4 ms-3 border-start border-2 border-secondary-subtle"
+    >
+      {% for item in month.list %}
+      <li class="position-relative mb-4">
+        <div
+          class="position-absolute top-0 start-0 translate-middle-y bg-primary rounded-circle"
+          style="width: 12px; height: 12px"
+        ></div>
+        <div class="ms-4">
+          <h6 class="fw-semibold mb-1">{{ item.title }}</h6>
+          <p class="mb-1">
+            <strong>Author:</strong> {{ item.author|default:"N/A" }}<br />
+            <strong>{{ item.tag }}:</strong> {{ item.borrowed_at|date:"M d, Y"
+            }}<br />
+            {% if item.due_date %}
+            <strong>Due:</strong> {{ item.due_date|date:"M d, Y" }}<br />
+            {% endif %}
+            <span
+              class="badge {% if item.tag == 'Due Soon' %}bg-danger {% elif item.tag == 'Reserved' %}bg-warning text-dark {% else %}bg-secondary {% endif %}"
+            >
+              {{ item.tag }}
+            </span>
+          </p>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-info text-center">You have no borrowing history.</div>
+  {% endif %}
+</div>
+
+<style>
+  .timeline ul {
+    position: relative;
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .timeline li::before {
+    content: "";
+    position: absolute;
+    left: -16px;
+    top: 10px;
+    width: 12px;
+    height: 12px;
+    background-color: #0d6efd;
+    border-radius: 50%;
+  }
+</style>
+{% endblock %}
