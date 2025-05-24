@@ -27,6 +27,10 @@ from rest_framework import serializers
 from myDjangoAdmin.models import LibraryUser
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from django.http import JsonResponse
+
+def api_root(request):
+    return JsonResponse({"message": "LibraryLink Expo API is running."})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
