@@ -1,7 +1,6 @@
 # myserver/models.py
 from django.db import models
 from django.utils import timezone
-from datetime import timedelta
 from myDjangoAdmin.models import LibraryUser, Book
 
 class FavoriteBook(models.Model):

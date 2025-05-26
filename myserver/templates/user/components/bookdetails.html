@@ -189,6 +189,16 @@
     .then(data => {
       if (data.status === 'added') {
         alert(data.message);
+        const copiesElement = document.querySelector("p strong:contains('Total Copies:')").parentElement;
+        let currentCopies = parseInt(copiesElement.textContent.match(/\d+/)[0]);
+        if (!isNaN(currentCopies)) {
+          currentCopies -= 1;
+          copiesElement.innerHTML = `<strong>Total Copies:</strong> ${currentCopies}`;
+          if (currentCopies === 0) {
+            document.getElementById('addBookingBtn').setAttribute('disabled', 'disabled');
+            copiesElement.classList.add('text-danger');
+          }
+        }
       } else if (data.status === 'already_exists') {
         alert(data.message);
       } else if (data.status === 'already_borrowed') {

@@ -1,31 +1,188 @@
-# myserver/views.
-import os, certifi, uuid, base64, json
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+import os, certifi, uuid, base64, json, traceback
+from django.conf import settings
+from django.http import JsonResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils.crypto import get_random_string
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import api_view, permission_classes
 from myDjangoAdmin.models import Staff, Admin, LibraryUser, StaffSessionLog, UserSessionLog, Genre, Book
+from myDjangoAdmin.serializers import BookSerializer, GenreSerializer
 from myserver.decorators import staff_required, user_required
 from myserver.forms import LibraryUserSignupForm, BookForm, ForgotPasswordForm, ResetPasswordForm
-from django.db.models import Prefetch, Q
+from django.shortcuts import render, redirect, get_object_or_404
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
-from django.conf import settings
-from django.utils import timezone
-from datetime import timedelta
-from django.urls import reverse
-from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.core.paginator import Paginator
-from rest_framework.decorators import api_view, permission_classes
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from .models import FavoriteBook
-from myDjangoAdmin.serializers import BookSerializer, GenreSerializer
+from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
+from django.db.models import Prefetch, Q
 from itertools import chain
 from operator import attrgetter
 from types import SimpleNamespace
+from django.contrib.auth.password_validation import validate_password
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def signup_user(request):
+    email = request.data.get('email')
+    full_name = request.data.get('full_name')
+    id_number = request.data.get('id_number')
+    password = request.data.get('password')
+
+    if not all([email, full_name, id_number, password]):
+        return Response({"success": False, "error": "All fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        validate_password(password)
+    except ValidationError as e:
+        return Response({"success": False, "error": e.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+    if LibraryUser.objects.filter(email=email).exists() or \
+       Staff.objects.filter(email=email).exists() or \
+       Admin.objects.filter(email=email).exists():
+        return Response({"success": False, "error": "Email already in use."}, status=status.HTTP_400_BAD_REQUEST)
+
+    name_parts = full_name.strip().split()
+    first_name = name_parts[0]
+    last_name = name_parts[-1] if len(name_parts) > 1 else ""
+
+    if LibraryUser.objects.filter(full_name=full_name).exists() or \
+       Staff.objects.filter(first_name=first_name, last_name=last_name).exists() or \
+       Admin.objects.filter(first_name=first_name, last_name=last_name).exists():
+        return Response({"success": False, "error": "Full name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if LibraryUser.objects.filter(id_number=id_number).exists() or \
+       Staff.objects.filter(staff_id=id_number).exists():
+        return Response({"success": False, "error": "ID number already in use."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = LibraryUser(
+        email=email,
+        full_name=full_name,
+        id_number=id_number,
+        is_active=False
+    )
+    user.set_password(password)
+    user.save()
+
+    otp_code = user.generate_otp()
+    user.otp_code = otp_code
+    user.otp_expiry = timezone.now() + timezone.timedelta(minutes=10)
+    user.save()
+
+    logo_path = os.path.join(settings.BASE_DIR, 'myserver', 'static', 'assets', 'official_logo.png')
+    try:
+        with open(logo_path, 'rb') as f:
+            logo_data = f.read()
+            encoded_logo = base64.b64encode(logo_data).decode()
+    except FileNotFoundError:
+        return Response({"success": False, "error": "Logo file missing on server."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    attachment = Attachment()
+    attachment.file_content = FileContent(encoded_logo)
+    attachment.file_type = FileType('image/png')
+    attachment.file_name = FileName('official_logo.png')
+    attachment.disposition = Disposition('inline')
+    attachment.content_id = ContentId('librarylinklogo')
+
+    html_content = f"""
+    <html>
+      <head>
+        <style>
+          @media only screen and (max-width: 600px) {{
+            .container {{ padding: 20px !important; }}
+            .otp-code {{ font-size: 22px !important; }}
+          }}
+          body {{
+            font-family: Arial, sans-serif;
+            background-color: #f2f4f6;
+            margin: 0;
+            padding: 0;
+          }}
+          .container {{
+            background-color: #ffffff;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+          }}
+          .header {{ text-align: center; margin-bottom: 30px; }}
+          .logo {{ width: 120px; height: auto; }}
+          h1 {{ color: #1a73e8; font-size: 24px; margin-bottom: 10px; }}
+          p {{ font-size: 16px; color: #333333; line-height: 1.5; }}
+          .otp-code {{
+            font-size: 26px;
+            font-weight: bold;
+            color: #1a73e8;
+            margin: 20px 0;
+            text-align: center;
+            letter-spacing: 2px;
+          }}
+          .footer {{ font-size: 12px; color: #888888; margin-top: 40px; text-align: center; }}
+          .legal {{
+            margin-top: 20px;
+            font-size: 10px;
+            color: #aaa;
+            line-height: 1.2;
+            text-align: justify;
+          }}
+          .legal .inline {{
+            display: inline-block;
+            margin-right: 20px;
+          }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="cid:librarylinklogo" alt="Library Link Logo" class="logo">
+            <h1>Welcome to Library Link</h1>
+          </div>
+            <p>Hi {user.full_name},</p>
+            <p>Thank you for registering with Library Link.</p>
+            <p>To activate your new account, please use the one-time password (OTP) below. This code is valid for the next 10 minutes:</p>
+          <div class="otp-code">{user.otp_code}</div>
+          <p>Please open the app and enter this code to complete your signup process.</p>
+          <div class="footer">
+            <p>If you did not sign up for an account, please ignore this email.</p>
+          </div>
+          <div class="legal">
+            <p>This service is currently in its <strong>beta</strong> version. Features and availability may change without notice.</p>
+            <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+            <p class="inline">All rights reserved. Powered by Library Link Team.</p>
+            <p class="inline">Library Link &copy; {timezone.now().year}</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+    message = Mail(
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to_emails=user.email,
+        subject="Library Link Account - Email Address OTP Confirmation",
+        plain_text_content=f"Hi {user.full_name},\n\nYour OTP code is: {otp_code}\nIt expires in 10 minutes.",
+        html_content=html_content
+    )
+    message.attachment = attachment
+
+    try:
+        os.environ['SSL_CERT_FILE'] = certifi.where()
+        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"OTP email sent. Status: {response.status_code}")
+    except Exception as e:
+        print(f"SendGrid error: {str(e)}")
+
+    return Response({"success": True, "message": "Account created. OTP sent via email."}, status=status.HTTP_201_CREATED)
 
 def approve_reserved_book(request, reserved_book_id):
     reserved_book = get_object_or_404(ReservedBook, id=reserved_book_id)
@@ -34,7 +191,7 @@ def approve_reserved_book(request, reserved_book_id):
 
     messages.success(request, f"Your reservation for '{reserved_book.book.title}' has been approved by staff.")
 
-    return redirect(request, 'user/home.html')  
+    return redirect(request, 'user_home')  
 
 def recent_activity_view(request):
     borrowed = BorrowedBook.objects.select_related('user', 'book').annotate_status("Borrowed")
@@ -110,7 +267,6 @@ def books_by_genre(request):
 
         books_data = BookSerializer(books, many=True, context={"request": request}).data
 
-        # Optionally, mark favorite if user_id is present
         if user_id:
             favorite_ids = FavoriteBook.objects.filter(user_id=user_id).values_list("book_id", flat=True)
             for book in books_data:
@@ -167,7 +323,6 @@ def otp_confirm(request):
             messages.error(request, "Invalid OTP.")
 
     return render(request, "myserver/components/otpconfirm.html", {'email': email})
-
 
 def login_page(request):
     return render(request, "myserver/login.html")
@@ -435,112 +590,112 @@ def user_signup(request):
 
             html_content = f"""
             <html>
-            <head>
-                <style>
-                @media only screen and (max-width: 600px) {{
+                <head>
+                    <style>
+                    @media only screen and (max-width: 600px) {{
+                        .container {{
+                            padding: 20px !important;
+                        }}
+                        .btn {{
+                            padding: 12px 20px !important;
+                            font-size: 16px !important;
+                        }}
+                    }}
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background-color: #f2f4f6;
+                        margin: 0;
+                        padding: 0;
+                    }}
                     .container {{
-                        padding: 20px !important;
+                        background-color: #ffffff;
+                        max-width: 600px;
+                        margin: 40px auto;
+                        padding: 40px;
+                        border-radius: 8px;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+                    }}
+                    .header {{
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }}
+                    .logo {{
+                        width: 120px;
+                        height: auto;
+                    }}
+                    h1 {{
+                        color: #1a73e8;
+                        font-size: 24px;
+                        margin-bottom: 10px;
+                    }}
+                    p {{
+                        font-size: 16px;
+                        color: #333333;
+                        line-height: 1.5;
+                    }}
+                    .otp-code {{
+                        font-size: 24px;
+                        font-weight: bold;
+                        color: #1a73e8;
+                        margin: 20px 0;
+                        text-align: center;
+                    }}
+                    .btn-container {{
+                        text-align: center;
                     }}
                     .btn {{
-                        padding: 12px 20px !important;
-                        font-size: 16px !important;
+                        display: inline-block;
+                        padding: 14px 28px;
+                        background-color: #1a73e8;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        margin-top: 20px;
                     }}
-                }}
-                body {{
-                    font-family: Arial, sans-serif;
-                    background-color: #f2f4f6;
-                    margin: 0;
-                    padding: 0;
-                }}
-                .container {{
-                    background-color: #ffffff;
-                    max-width: 600px;
-                    margin: 40px auto;
-                    padding: 40px;
-                    border-radius: 8px;
-                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
-                }}
-                .header {{
-                    text-align: center;
-                    margin-bottom: 30px;
-                }}
-                .logo {{
-                    width: 120px;
-                    height: auto;
-                }}
-                h1 {{
-                    color: #1a73e8;
-                    font-size: 24px;
-                    margin-bottom: 10px;
-                }}
-                p {{
-                    font-size: 16px;
-                    color: #333333;
-                    line-height: 1.5;
-                }}
-                .otp-code {{
-                    font-size: 24px;
-                    font-weight: bold;
-                    color: #1a73e8;
-                    margin: 20px 0;
-                    text-align: center;
-                }}
-                .btn-container {{
-                    text-align: center;
-                }}
-                .btn {{
-                    display: inline-block;
-                    padding: 14px 28px;
-                    background-color: #1a73e8;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 5px;
-                    font-size: 16px;
-                    font-weight: bold;
-                    margin-top: 20px;
-                }}
-                .footer {{
-                    font-size: 12px;
-                    color: #888888;
-                    margin-top: 40px;
-                    text-align: center;
-                }}
-                .legal {{
-                    margin-top: 20px;
-                    font-size: 10px;
-                    color: #aaa;
-                    line-height: 1.2;
-                    text-align: justify;
-                }}
-                .legal .inline {{
-                    display: inline-block;
-                    margin-right: 20px;
-                }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <img src="cid:librarylinklogo" alt="Library Link Logo" class="logo">
-                        <h1>Welcome to Library Link, {user.full_name}!</h1>
+                    .footer {{
+                        font-size: 12px;
+                        color: #888888;
+                        margin-top: 40px;
+                        text-align: center;
+                    }}
+                    .legal {{
+                        margin-top: 20px;
+                        font-size: 10px;
+                        color: #aaa;
+                        line-height: 1.2;
+                        text-align: justify;
+                    }}
+                    .legal .inline {{
+                        display: inline-block;
+                        margin-right: 20px;
+                    }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <img src="cid:librarylinklogo" alt="Library Link Logo" class="logo">
+                            <h1>Welcome to Library Link, {user.full_name}!</h1>
+                        </div>
+                        <p>Thank you for registering with Library Link.</p>
+                        <p>To activate your account, please use the one-time password (OTP) below. This code is valid for the next 10 minutes:</p>
+                        <div class="otp-code">{otp_code}</div>
+                        <p class="btn-container">
+                            <a href="{otp_url}" class="btn" style="color: white;">Verify OTP</a>
+                        </p>
+                        <div class="footer">
+                            <p>If you did not request a password reset, you can ignore this email.</p>
+                        </div>
+                        <div class="legal">
+                            <p>This service is currently in its <strong>beta</strong> version. Features and availability may change without notice.</p>
+                            <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+                            <p class="inline">All rights reserved. Powered by Library Link Team.</p>
+                            <p class="inline">Library Link &copy; {timezone.now().year}</p>
+                        </div>
                     </div>
-                    <p>Thank you for registering with Library Link.</p>
-                    <p>To activate your account, please use the one-time password (OTP) below. This code is valid for the next 10 minutes:</p>
-                    <div class="otp-code">{otp_code}</div>
-                    <p class="btn-container">
-                        <a href="{otp_url}" class="btn" style="color: white;">Verify OTP</a>
-                    </p>
-                    <div class="footer">
-                        <p>If you did not request a password reset, you can ignore this email.</p>
-                    </div>
-                    <div class="legal">
-                        <p>This service is currently in its <strong>beta</strong> version. Features and availability may change without notice.</p>
-                        <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
-                        <p class="inline">All rights reserved. Powered by Library Link Team.</p>
-                        <p class="inline">Library Link &copy; {timezone.now().year}</p>
-                    </div>
-                </div>
-            </body>
+                </body>
             </html>
             """
 
@@ -571,6 +726,194 @@ def user_signup(request):
         form = LibraryUserSignupForm()
 
     return render(request, "myserver/signupuser.html", {'form': form})
+
+@csrf_exempt
+def forgot_password_request_mobile(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method."}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        email = data.get("email", "").strip()
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({"error": "Invalid JSON or missing email"}, status=400)
+
+    if not email:
+        return JsonResponse({"error": "Email is required."}, status=400)
+
+    try:
+        user = LibraryUser.objects.get(email=email)
+    except LibraryUser.DoesNotExist:
+        return JsonResponse({"error": "No user with this email."}, status=404)
+
+    user.otp_code = get_random_string(length=6, allowed_chars="1234567890")
+    user.otp_expiry = timezone.now() + timezone.timedelta(minutes=15) 
+    user.save()
+
+    html_message = f"""
+    <html>
+      <head>
+        <style>
+          @media only screen and (max-width: 600px) {{
+            .container {{ padding: 20px !important; }}
+            .otp-code {{ font-size: 22px !important; }}
+          }}
+          body {{
+            font-family: Arial, sans-serif;
+            background-color: #f2f4f6;
+            margin: 0;
+            padding: 0;
+          }}
+          .container {{
+            background-color: #ffffff;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+          }}
+          .header {{ text-align: center; margin-bottom: 30px; }}
+          .logo {{ width: 120px; height: auto; }}
+          h1 {{ color: #1a73e8; font-size: 24px; margin-bottom: 10px; }}
+          p {{ font-size: 16px; color: #333333; line-height: 1.5; }}
+          .otp-code {{
+            font-size: 26px;
+            font-weight: bold;
+            color: #1a73e8;
+            margin: 20px 0;
+            text-align: center;
+            letter-spacing: 2px;
+          }}
+          .footer {{ font-size: 12px; color: #888888; margin-top: 40px; text-align: center; }}
+          .legal {{
+            margin-top: 20px;
+            font-size: 10px;
+            color: #aaa;
+            line-height: 1.2;
+            text-align: justify;
+          }}
+          .legal .inline {{
+            display: inline-block;
+            margin-right: 20px;
+          }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="cid:librarylinklogo" alt="Library Link Logo" class="logo">
+            <h1>Password Reset Requested</h1>
+          </div>
+          <p>Hi {user.full_name},</p>
+          <p>You requested to reset your Library Link password. Use the one-time password (OTP) below in the mobile app to continue:</p>
+          <div class="otp-code">{user.otp_code}</div>
+          <p>Please open the app and enter this code to proceed. The OTP is valid for a limited time.</p>
+          <div class="footer">
+            <p>If you did not request a password reset, you can safely ignore this email.</p>
+          </div>
+          <div class="legal">
+            <p>This service is currently in its <strong>beta</strong> version. Features and availability may change without notice.</p>
+            <p>Use of this service is subject to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+            <p class="inline">All rights reserved. Powered by Library Link Team.</p>
+            <p class="inline">Library Link &copy; {timezone.now().year}</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+    try:
+        message = Mail(
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to_emails=user.email,
+            subject="Password Reset OTP",
+            html_content=html_message,
+        )
+
+        logo_path = os.path.join(settings.BASE_DIR, "static", "images", "library-official-logo.png")
+        if os.path.exists(logo_path):
+            with open(logo_path, "rb") as f:
+                data = f.read()
+                encoded = base64.b64encode(data).decode()
+            attachment = Attachment()
+            attachment.file_content = FileContent(encoded)
+            attachment.file_type = FileType("image/png")
+            attachment.file_name = FileName("library-official-logo.png")
+            attachment.disposition = Disposition("inline")
+            attachment.content_id = ContentId("librarylinklogo")
+            message.add_attachment(attachment) 
+
+        os.environ['SSL_CERT_FILE'] = certifi.where()
+        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        sg.send(message)
+
+        return JsonResponse({"message": "OTP sent to your email."}, status=200)
+
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({"error": "Failed to send email", "detail": str(e)}, status=500)
+    
+@csrf_exempt
+def reset_password_mobile(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method."}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        email = data.get("email", "").strip()
+        otp = data.get("otp", "").strip()
+        new_password = data.get("new_password", "").strip()
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({"error": "Invalid JSON or missing fields"}, status=400)
+
+    if not email or not otp or not new_password:
+        return JsonResponse({"error": "Email, OTP and new password are required."}, status=400)
+
+    try:
+        user = LibraryUser.objects.get(email=email)
+    except LibraryUser.DoesNotExist:
+        return JsonResponse({"error": "No user with this email."}, status=404)
+
+    if not user.is_otp_valid(otp):
+        return JsonResponse({"error": "Invalid or expired OTP."}, status=400)
+
+    user.set_password(new_password)
+
+    user.otp_code = None
+    user.otp_expiry = None
+    user.save()
+
+    return JsonResponse({"message": "Password has been reset successfully."}, status=200)
+
+@csrf_exempt
+def verify_otp_mobile(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method."}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        email = data.get("email", "").strip()
+        otp = data.get("otp", "").strip()
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({"error": "Invalid JSON or missing fields."}, status=400)
+
+    if not email or not otp:
+        return JsonResponse({"error": "Email and OTP are required."}, status=400)
+
+    try:
+        user = LibraryUser.objects.get(email=email)
+    except LibraryUser.DoesNotExist:
+        return JsonResponse({"error": "No user with this email."}, status=404)
+
+    if not user.is_otp_valid(otp):
+        return JsonResponse({"error": "Invalid or expired OTP."}, status=400)
+
+    user.is_active = True
+    user.otp_code = None
+    user.otp_expiry = None
+    user.save()
+
+    return JsonResponse({"message": "Your account has been verified! You can now log in."}, status=200)
 
 def forgot_password_request(request):
     if request.method == "POST":
@@ -945,8 +1288,15 @@ def book_cart(request):
 
         elif 'remove_book' in request.POST:
             book_id = request.POST.get('remove_book')
-            BookingCart.objects.filter(user=user, book_id=book_id).delete()
-            messages.success(request, "Book removed from cart.")
+            try:
+                cart_item = BookingCart.objects.get(user=user, book_id=book_id)
+                book = cart_item.book
+                book.copies += 1  
+                book.save()
+                cart_item.delete()
+                messages.success(request, f"'{book.title}' removed from cart and copies updated.")
+            except BookingCart.DoesNotExist:
+                messages.warning(request, "Book was not found in your cart.")
             return redirect('book_cart')
 
         elif 'request_booking' in request.POST:
@@ -990,7 +1340,9 @@ def book_cart(request):
 @user_required
 @require_POST
 def add_to_cart(request):
+    user = request.user
     book_id = request.POST.get('book_id')
+
     try:
         book = Book.objects.get(id=book_id)
 
@@ -999,16 +1351,41 @@ def add_to_cart(request):
 
         if ReservedBook.objects.filter(user=request.user, book=book).exists():
             return JsonResponse({'status': 'already_reserved', 'message': 'You have already reserved this book.'})
-
-        cart_item, created = BookingCart.objects.get_or_create(user=request.user, book=book)
-
-        if created:
-            return JsonResponse({'status': 'added', 'message': 'Book added to your cart!'})
-        else:
+        
+        if BookingCart.objects.filter(user=user, book=book).exists():
             return JsonResponse({'status': 'already_exists', 'message': 'This book is already in your cart.'})
+        
+        if book.copies < 1:
+            return JsonResponse({'status': 'no_copies', 'message': 'No available copies of this book.'})
+
+        BookingCart.objects.create(user=user, book=book)
+        book.copies -= 1
+        book.save()
+
+        return JsonResponse({'status': 'added', 'message': f"'{book.title}' has been added to your cart."})
 
     except Book.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Book not found'})
+    
+@user_required
+@require_POST
+def remove_from_cart(request):
+    book_id = request.POST.get('remove_book')
+    try:
+        cart_item = BookingCart.objects.get(user=request.user, book_id=book_id)
+        book = cart_item.book
+
+        cart_item.delete()
+        book.copies_available += 1
+        book.save()
+
+        messages.success(request, f"'{book.title}' has been removed from your cart.")
+    except BookingCart.DoesNotExist:
+        messages.error(request, 'Book not found in your cart.')
+    except Book.DoesNotExist:
+        messages.error(request, 'Book not found.')
+
+    return redirect('book_cart')
     
 @staff_required
 def logout_staff(request):

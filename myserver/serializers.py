@@ -11,8 +11,11 @@ class RecentlyViewedSerializer(serializers.ModelSerializer):
         fields = ['book', 'viewed_at']
 
 class BookingCartSerializer(serializers.ModelSerializer):
-    book = BookSerializer()
+    book = serializers.SerializerMethodField()
 
     class Meta:
         model = BookingCart
         fields = ['book', 'added_at']
+
+    def get_book(self, obj):
+        return BookSerializer(obj.book, context=self.context).data

@@ -4,24 +4,17 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from myDjangoAdmin.authentication import LibraryUserJWTAuthentication
 from myDjangoAdmin.serializers import LibraryUserSerializer, BookSerializer
-from django.shortcuts import get_object_or_404
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import LibraryUserTokenObtainPairSerializer
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from .serializers import LibraryUserTokenObtainPairSerializer, MobileTokenObtainPairSerializer
 from myserver.serializers import RecentlyViewedSerializer, BookingCartSerializer
 from myDjangoAdmin.authentication import LibraryUserJWTAuthentication
 from myserver.models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
 from rest_framework.generics import RetrieveAPIView
 from .models import Book
 from rest_framework.exceptions import PermissionDenied
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 from django.utils import timezone
 from myDjangoAdmin.models import UserSessionLog, LibraryUserOutstandingToken
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework import status
-from .serializers import LibraryUserTokenObtainPairSerializer
+from rest_framework import status, permissions
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework import serializers
 from myDjangoAdmin.models import LibraryUser, Genre
@@ -30,6 +23,46 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.http import JsonResponse
 from .serializers import GenreSerializer
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def borrow_book(request, user_id):
+    if request.user.id != user_id:
+        return Response({'detail': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+
+    book_id = request.data.get('book_id')
+    if not book_id:
+        return Response({'detail': 'book_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if BorrowedBook.objects.filter(user_id=user_id, book_id=book_id).exists():
+        return Response({'detail': 'Book already borrowed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        book = Book.objects.get(id=book_id)
+        borrowed = BorrowedBook.objects.create(user_id=user_id, book=book)
+        return Response({'detail': 'Book borrowed successfully.'}, status=status.HTTP_201_CREATED)
+    except Book.DoesNotExist:
+        return Response({'detail': 'Book not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def reserve_book(request, user_id):
+    if request.user.id != user_id:
+        return Response({'detail': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+
+    book_id = request.data.get('book_id')
+    if not book_id:
+        return Response({'detail': 'book_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if ReservedBook.objects.filter(user_id=user_id, book_id=book_id).exists():
+        return Response({'detail': 'Book already reserved.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        book = Book.objects.get(id=book_id)
+        reserved = ReservedBook.objects.create(user_id=user_id, book=book)
+        return Response({'detail': 'Book reserved successfully.'}, status=status.HTTP_201_CREATED)
+    except Book.DoesNotExist:
+        return Response({'detail': 'Book not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -164,8 +197,32 @@ class UserRecentViewsAPIView(APIView):
             return Response({"detail": "Not authorized"}, status=403)
         views = RecentlyViewed.objects.filter(user_id=user_id).select_related('book')[:10]
         serializer = RecentlyViewedSerializer(views, many=True, context={"request": request})
-        return Response([v['book'] for v in serializer.data])  
+        return Response([v['book'] for v in serializer.data])
 
+    def post(self, request, user_id):
+        if str(request.user.id) != str(user_id):
+            return Response({"detail": "Not authorized"}, status=403)
+        
+        book_id = request.data.get('book_id')
+        if not book_id:
+            return Response({"detail": "book_id is required"}, status=400)
+        
+        try:
+            book = Book.objects.get(id=book_id)
+        except Book.DoesNotExist:
+            return Response({"detail": "Book not found"}, status=404)
+        
+        recently_viewed, created = RecentlyViewed.objects.get_or_create(
+            user_id=user_id,
+            book=book,
+            defaults={'viewed_at': timezone.now()}
+        )
+        
+        if not created:
+            recently_viewed.viewed_at = timezone.now()
+            recently_viewed.save(update_fields=['viewed_at'])
+        
+        return Response({"detail": "Book view recorded"}, status=200)
 
 class UserPendingBooksAPIView(APIView):
     authentication_classes = [LibraryUserJWTAuthentication]
@@ -189,6 +246,49 @@ class UserFavoriteBooksAPIView(APIView):
         favorites = FavoriteBook.objects.filter(user_id=user_id).select_related('book')
         data = [BookSerializer(fav.book, context={"request": request}).data for fav in favorites]
         return Response(data)
+
+    def post(self, request, user_id):
+        if str(request.user.id) != str(user_id):
+            return Response({"detail": "Not authorized"}, status=403)
+        book_id = request.data.get('book_id')
+        if not book_id:
+            return Response({'error': 'book_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = LibraryUser.objects.get(id=user_id)
+            book = Book.objects.get(id=book_id)
+            favorite, created = FavoriteBook.objects.get_or_create(user=user, book=book)
+            if created:
+                return Response({'success': 'Book added to favorites'}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'info': 'Book already in favorites'}, status=status.HTTP_200_OK)
+        except LibraryUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Book.DoesNotExist:
+            return Response({'error': 'Book not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, user_id):
+        if str(request.user.id) != str(user_id):
+            return Response({"detail": "Not authorized"}, status=403)
+        book_id = request.data.get('book_id')
+        if not book_id:
+            return Response({'error': 'book_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = LibraryUser.objects.get(id=user_id)
+            book = Book.objects.get(id=book_id)
+            fav = FavoriteBook.objects.filter(user=user, book=book)
+            deleted, _ = fav.delete()
+            if deleted:
+                return Response({'success': 'Book removed from favorites'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'info': 'Book was not in favorites'}, status=status.HTTP_200_OK)
+        except LibraryUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Book.DoesNotExist:
+            return Response({'error': 'Book not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MeView(APIView):
     authentication_classes = [LibraryUserJWTAuthentication]
@@ -222,5 +322,50 @@ class LibraryUserTokenObtainPairView(TokenObtainPairView):
 
 class LibraryUserTokenRefreshView(TokenRefreshView):
     serializer_class = LibraryUserTokenRefreshSerializer
+
+class MobileTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MobileTokenObtainPairSerializer
+
+class UserBookingCartAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        if request.user.id != user_id:
+            return Response({'detail': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        cart_items = BookingCart.objects.filter(user_id=user_id)
+        serializer = BookingCartSerializer(cart_items, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, user_id):
+        if request.user.id != user_id:
+            return Response({'detail': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        book_id = request.data.get('book_id')
+        if not book_id:
+            return Response({'detail': 'book_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if BookingCart.objects.filter(user_id=user_id, book_id=book_id).exists():
+            return Response({'detail': 'Book already in cart.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            book = Book.objects.get(id=book_id)
+        except Book.DoesNotExist:
+            return Response({'detail': 'Book not found.'}, status=status.HTTP_404_NOT_FOUND)
+        cart_item = BookingCart.objects.create(user_id=user_id, book=book)
+        serializer = BookingCartSerializer(cart_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, user_id):
+        if request.user.id != user_id:
+            return Response({'detail': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        book_id = request.data.get('book_id')
+        if not book_id:
+            return Response({'detail': 'book_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            cart_item = BookingCart.objects.get(user_id=user_id, book_id=book_id)
+            cart_item.delete()
+            return Response({'detail': 'Book removed from cart.'}, status=status.HTTP_204_NO_CONTENT)
+        except BookingCart.DoesNotExist:
+            return Response({'detail': 'Book not found in cart.'}, status=status.HTTP_404_NOT_FOUND)
+
 
 # Create your views here.
