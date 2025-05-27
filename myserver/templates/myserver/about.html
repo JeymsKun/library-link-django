@@ -1,9 +1,65 @@
 {% extends "base.html" %} {% load static %} {% block title %}About Us | Library
 Link{% endblock %} {% block content %}
-<div
-  class="min-vh-100 bg-light d-flex flex-column px-3 py-4"
-  style="background-color: #e6f4fb !important"
->
-  <h3>Unavailable!</h3>
+<div class="min-vh-100 d-flex flex-column px-3 py-4 bg-white">
+  <!-- Header -->
+  <div class="d-flex align-items-center mb-4" style="padding: 0 6%">
+    <a
+      href="javascript:history.back()"
+      style="margin-right: 1rem; text-decoration: none"
+    >
+      <i
+        class="fas fa-arrow-left"
+        style="font-size: 1.75rem; color: #3b82f6"
+      ></i>
+    </a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="mx-auto" style="max-width: 800px; padding: 0 6% 5rem">
+    <img
+      src="{% static 'assets/library-official-logo.png' %}"
+      alt="Library Logo"
+      class="d-block mx-auto mb-4"
+      style="width: 40%; max-width: 200px"
+    />
+
+    <h1 class="text-center mb-4" style="color: #1e40af; font-weight: 700">
+      About This Library Link
+    </h1>
+
+    <h4 style="color: #2563eb; font-weight: 700">Greetings</h4>
+    <p class="mb-4" style="line-height: 1.6">
+      Welcome to our Library Link Official! We are excited to provide you with
+      an easy and enjoyable way to manage your books, track your favorites, and
+      stay updated with your reading list.
+    </p>
+
+    <h4 style="color: #2563eb; font-weight: 700">Creators</h4>
+    <ul class="mb-4" style="color: #1e40af; font-weight: 600">
+      <li>James David Maserin</li>
+      <li>Zia Shyr Dumape</li>
+      <li>Reiven Singedas Tacang</li>
+    </ul>
+
+    <h4 style="color: #2563eb; font-weight: 700">Our Intentions</h4>
+    <p class="mb-4" style="line-height: 1.6">
+      This website is designed to bring convenience to book lovers by combining
+      easy browsing, personalized tracking, and a community-driven platform for
+      sharing and discovering books.
+    </p>
+
+    <h4 style="color: #2563eb; font-weight: 700">Copyright & License</h4>
+    <p class="mb-4" style="line-height: 1.6">
+      © 2025 Library Link Team. All rights reserved. This software is
+      distributed under the MIT License.
+    </p>
+
+    <p
+      class="text-center mt-5"
+      style="font-style: italic; color: #555; font-size: 0.875rem"
+    >
+      Thank you for choosing our official website — happy reading!
+    </p>
+  </div>
 </div>
 {% endblock %}

@@ -1,6 +1,6 @@
 import os, certifi, uuid, base64, json, traceback
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotFound
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -22,12 +22,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from sendgrid import SendGridAPIClient
 from .models import FavoriteBook
 from .models import FavoriteBook, RecentlyViewed, BookingCart, BorrowedBook, ReservedBook
-from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, ContentId
+from sendgrid.helpers.mail import Mail, Email, To, Attachment, FileContent, FileName, FileType, Disposition, ContentId, Content
 from django.db.models import Prefetch, Q
 from itertools import chain
 from operator import attrgetter
 from types import SimpleNamespace
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.decorators import login_required
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -193,54 +194,6 @@ def approve_reserved_book(request, reserved_book_id):
 
     return redirect(request, 'user_home')  
 
-def recent_activity_view(request):
-    borrowed = BorrowedBook.objects.select_related('user', 'book').annotate_status("Borrowed")
-    viewed = RecentlyViewed.objects.select_related('user', 'book').annotate_status("Viewed")
-    sessions = UserSessionLog.objects.select_related('library_user').annotate_status("Session")
-
-    borrowed = [
-        SimpleNamespace(
-            book=b.book,
-            user=b.user,
-            status="Borrowed",
-            created_at=b.borrowed_at,
-            id=b.id
-        )
-        for b in borrowed
-    ]
-
-    viewed = [
-        SimpleNamespace(
-            book=v.book,
-            user=v.user,
-            status="Viewed",
-            created_at=v.viewed_at,
-            id=v.id
-        )
-        for v in viewed
-    ]
-
-    sessions = [
-        SimpleNamespace(
-            book=None,
-            user=s.library_user,
-            status=s.action,
-            created_at=s.timestamp,
-            id=s.id
-        )
-        for s in sessions
-    ]
-
-    combined_activities = sorted(
-        chain(borrowed, viewed, sessions),
-        key=attrgetter("created_at"),
-        reverse=True
-    )[:30]  
-
-    return render(request, "staff/components/recenttransactionstable.html", {
-        "recent_activities": combined_activities,
-    })
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def favorite_books(request, user_id):
@@ -337,7 +290,50 @@ def terms_of_service(request):
     return render(request, 'myserver/termsofservice.html', {'page_title': 'Terms of Service'})
 
 def report_issue(request):
-    return render(request, 'myserver/reportissue.html', {'page_title': 'Report an Issue'})
+    if request.method == "POST":
+        user_email = request.POST.get("email", "").strip()
+        issue_message = request.POST.get("message", "").strip()
+
+        if not issue_message:
+            messages.error(request, "Please provide a description of the issue.")
+            return redirect('report_issue')
+
+        subject = "Library Link - New Issue Reported"
+        from_email = settings.DEFAULT_FROM_EMAIL
+        to_email = settings.SUPPORT_EMAIL  
+
+        body_html = f"""
+        <html>
+            <body>
+                <h3>New Issue Submitted</h3>
+                <p><strong>From:</strong> {user_email or 'Not provided'}</p>
+                <p><strong>Message:</strong></p>
+                <p>{issue_message.replace('\n', '<br>')}</p>
+            </body>
+        </html>
+        """
+
+        message = Mail(
+            from_email=Email(from_email),
+            to_emails=To(to_email),
+            subject=subject,
+            html_content=Content("text/html", body_html)
+        )
+
+        try:
+            os.environ['SSL_CERT_FILE'] = certifi.where()
+            sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+            response = sg.send(message)
+            print(f"Issue report email sent. Response code: {response.status_code}")
+            messages.success(request, "Thank you for reporting the issue! We’ve received your message and our team will review it shortly.")
+
+        except Exception as e:
+            print(f"Failed to send issue report email: {str(e)}")
+            messages.error(request, "Sorry, there was an error sending your report. Please try again later.")
+
+        return redirect("report_issue")
+
+    return render(request, "myserver/reportissue.html")
 
 def help(request):
     return render(request, 'myserver/help.html', {'page_title': 'Help'})
@@ -393,9 +389,7 @@ def staff_home(request):
     for user in LibraryUser.objects.all():
         borrowed_books = BorrowedBook.objects.filter(user=user).select_related('book')
         reserved_books = ReservedBook.objects.filter(user=user).select_related('book')
-
         all_books = list({b.book for b in borrowed_books}.union({r.book for r in reserved_books}))
-
         user_summaries.append({
             'full_name': user.full_name,
             'books': all_books,
@@ -404,15 +398,53 @@ def staff_home(request):
 
     booking_requests = ReservedBook.objects.filter(status='pending').select_related('user', 'book')
 
+    borrowed_list = [
+        SimpleNamespace(
+            book=b.book,
+            user=b.user,
+            status="Borrowed",
+            created_at=b.borrowed_at,
+            id=b.id
+        ) for b in BorrowedBook.objects.select_related('user', 'book')
+    ]
+
+    viewed_list = [
+        SimpleNamespace(
+            book=v.book,
+            user=v.user,
+            status="Viewed",
+            created_at=v.viewed_at,
+            id=v.id
+        ) for v in RecentlyViewed.objects.select_related('user', 'book')
+    ]
+
+    reserved_list = [
+        SimpleNamespace(
+            book=r.book,
+            user=r.user,
+            status=r.status.capitalize(),
+            created_at=r.reserved_at,
+            id=r.id
+        ) for r in ReservedBook.objects.select_related('user', 'book')
+    ]
+
+    recent_activities = sorted(
+        chain(borrowed_list, viewed_list, reserved_list),
+        key=attrgetter("created_at"),
+        reverse=True
+    )[:30]
+
     context = {
         'user_summaries': user_summaries,
         'total_books': total_books,
         'borrowed': borrowed,
         'unreturned': unreturned,
         'users': users,
-        'appbar_title': 'Dashboard' ,
+        'appbar_title': 'Dashboard',
         'booking_requests': booking_requests,
+        'recent_activities': recent_activities,  
     }
+
     return render(request, 'staff/home.html', context)
 
 @staff_required
@@ -485,7 +517,29 @@ def staff_barcode(request):
 
 @staff_required
 def staff_transaction(request):
-    return render(request, 'staff/transaction.html', { 'appbar_title': 'Transaction' })
+    status_filter = request.GET.get('status', 'All')
+
+    transactions = BorrowedBook.objects.select_related('user', 'book')
+
+    def annotate_status(tx):
+        if tx.returned_at:
+            tx.status = 'returned'
+        else:
+            tx.status = 'borrowed'
+        tx.display_title = tx.book.title
+        tx.borrower = tx.user.full_name
+        tx.borrow_date = tx.borrowed_at.strftime('%Y-%m-%d')
+        return tx
+
+    transactions = [annotate_status(tx) for tx in transactions]
+
+    if status_filter != 'All':
+        transactions = [tx for tx in transactions if tx.status == status_filter.lower()]
+
+    return render(request, 'staff/transaction.html', {
+        'appbar_title': 'Transaction',
+        'transactions': transactions
+    })
 
 @staff_required
 def staff_booklist(request):
@@ -1166,6 +1220,89 @@ def user_borrowinghistory(request):
 def user_barcode(request):
     return render(request, 'user/barcode.html', { 'appbar_title': 'Barcode' })
 
+@login_required
+@require_POST
+def mark_book_returned(request, book_id):
+    user = request.user
+    try:
+        borrowed_instance = BorrowedBook.objects.get(
+            book_id=book_id,
+            user=user,
+            returned_at__isnull=True,
+        )
+    except BorrowedBook.DoesNotExist:
+        return HttpResponseNotFound("No active borrow record found for this book and user.")
+
+    borrowed_instance.returned_at = timezone.now()
+    borrowed_instance.save()
+
+    book = borrowed_instance.book
+
+    book.copies = (book.copies or 0) + 1
+    book.save()
+
+    response_data = {
+        'id': str(book.id),
+        'title': book.title,
+        'author': book.author,
+        'borrowed': False,
+        'borrowed_by': None,
+        'borrowed_at': None,
+        'last_returned': {
+            'user': {
+                'id': borrowed_instance.user.id,
+                'full_name': borrowed_instance.user.full_name,
+            },
+            'returned_at': borrowed_instance.returned_at.isoformat(),
+        },
+    }
+    return JsonResponse(response_data)
+
+def get_book_by_barcode(request, barcode):
+    try:
+        book = Book.objects.get(barcode_code=barcode)
+
+        borrowed_instance = BorrowedBook.objects.filter(book=book, returned_at__isnull=True).select_related('user').first()
+        last_returned_instance = BorrowedBook.objects.filter(book=book, returned_at__isnull=False).order_by('-returned_at').select_related('user').first()
+
+        response_data = {
+            'id': str(book.id),
+            'title': book.title,
+            'author': book.author,
+            'genre': book.genres.name if book.genres else 'Unknown',
+            'isbn': book.isbn,
+            'published_date': book.published_date.isoformat() if book.published_date else '',
+            'description': book.description or '',
+            'cover_url': book.cover_image.url if book.cover_image else '',
+            'borrowed': False,
+            'borrowed_by': None,
+            'borrowed_at': None,
+            'last_returned': None,
+        }
+
+        if borrowed_instance:
+            response_data['borrowed'] = True
+            response_data['borrowed_by'] = {
+                'id': borrowed_instance.user.id,
+                'full_name': borrowed_instance.user.full_name,
+                'email': borrowed_instance.user.email,
+            }
+            response_data['borrowed_at'] = borrowed_instance.borrowed_at.isoformat()
+
+        if last_returned_instance:
+            response_data['last_returned'] = {
+                'user': {
+                    'id': last_returned_instance.user.id,
+                    'full_name': last_returned_instance.user.full_name,
+                },
+                'returned_at': last_returned_instance.returned_at.isoformat(),
+            }
+
+        return JsonResponse(response_data)
+
+    except Book.DoesNotExist:
+        return JsonResponse({'error': 'Book not found'}, status=404)
+    
 @user_required
 def user_library(request):
     genre_id = request.GET.get('genre', None)
@@ -1266,19 +1403,22 @@ def book_cart(request):
             try:
                 cart_item = BookingCart.objects.get(user=user, book_id=book_id)
 
-                borrowed, created = BorrowedBook.objects.get_or_create(
+                active_borrow = BorrowedBook.objects.filter(
                     user=user,
                     book=cart_item.book,
-                    defaults={
-                        'borrowed_at': timezone.now(),
-                    }
-                )
+                    returned_at__isnull=True
+                ).first()
 
-                if created:
+                if active_borrow:
+                    messages.warning(request, f"You've already borrowed '{cart_item.book.title}'.")
+                else:
+                    BorrowedBook.objects.create(
+                        user=user,
+                        book=cart_item.book,
+                        borrowed_at=timezone.now()
+                    )
                     cart_item.delete()
                     messages.success(request, f"You borrowed '{cart_item.book.title}'.")
-                else:
-                    messages.warning(request, f"You've already borrowed '{cart_item.book.title}'.")
 
                 return redirect('book_cart')
 
@@ -1346,7 +1486,7 @@ def add_to_cart(request):
     try:
         book = Book.objects.get(id=book_id)
 
-        if BorrowedBook.objects.filter(user=request.user, book=book).exists():
+        if BorrowedBook.objects.filter(user=request.user, book=book, returned_at__isnull=True).exists():
             return JsonResponse({'status': 'already_borrowed', 'message': 'You have already borrowed this book.'})
 
         if ReservedBook.objects.filter(user=request.user, book=book).exists():

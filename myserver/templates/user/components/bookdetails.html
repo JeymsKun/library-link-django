@@ -37,7 +37,11 @@
 </style>
 
 <div class="container-fluid mt-2 mb-4" style="padding-top: 70px;">
-  {% if from_page == 'bookshelf' %}
+  {% if from_page == 'scanning' %}
+    <a href="{% url 'user_barcode' %}" class="btn text-primary fw-semibold ms-4" style="box-shadow: none; border: none;">
+      ← Back to Barcode Scanner
+    </a>
+  {% elif from_page == 'bookshelf' %}
     <a href="{% url 'user_home' %}?view={{ view_name }}" class="btn text-primary fw-semibold ms-4" style="box-shadow: none; border: none;">
       ← Back to Bookshelf
     </a>
@@ -47,6 +51,7 @@
     </a>
   {% endif %}
 </div>
+
 
 
 <div class="container mt-4 mb-5">

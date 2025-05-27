@@ -1,4 +1,3 @@
-# myserver/forms.py
 from django import forms
 from myDjangoAdmin.models import LibraryUser, Book, Genre
 

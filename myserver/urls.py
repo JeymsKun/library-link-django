@@ -35,6 +35,8 @@ urlpatterns = [
     path("staff/booklist", views.staff_booklist, name="staff_booklist"),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/book/<str:barcode>/', views.get_book_by_barcode),
+    path('api/book/<uuid:book_id>/return/', views.mark_book_returned, name='mark_book_returned'),
     path('api/token/mobile/', MobileTokenObtainPairView.as_view(), name='token_obtain_pair_mobile'),
     path('user/reset-password/', views.reset_password, name='reset_password'),
     path('user/forgot-password/', views.forgot_password_request, name='forgot_password'),

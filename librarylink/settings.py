@@ -28,13 +28,13 @@ SECRET_KEY = 'django-insecure-pc7=e!%8ny3*2(l56qk@r3bx(#!h^0_3i4t@yu2t1qf_lgwggi
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-# DEBUG = False
+DEBUG = False
 
-# ALLOWED_HOSTS = ['3.25.117.239']
+ALLOWED_HOSTS = ['3.25.117.239']
 
-DEBUG = True
+# DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS = ['*']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -131,6 +131,7 @@ SESSION_COOKIE_HTTPONLY = True
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 DEFAULT_FROM_EMAIL = 'maserinjames50@hotmail.com'
+SUPPORT_EMAIL = 'maserin.jamesdavid000@gmail.com'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

@@ -1,9 +1,65 @@
 {% extends "base.html" %} {% load static %} {% block title %}Help | Library
 Link{% endblock %} {% block content %}
-<div
-  class="min-vh-100 bg-light d-flex flex-column px-3 py-4"
-  style="background-color: #e6f4fb !important"
->
-  <h3>Unavailable!</h3>
+<div class="min-vh-100 d-flex flex-column px-3 py-4 bg-white">
+  <!-- Header -->
+  <div class="d-flex align-items-center mb-4" style="padding: 0 6%">
+    <a href="javascript:history.back()" class="text-decoration-none me-3">
+      <i
+        class="fas fa-arrow-left"
+        style="font-size: 1.75rem; color: #3b82f6"
+      ></i>
+    </a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="mx-auto" style="max-width: 800px; padding: 0 6% 5rem">
+    <h4 style="color: #2563eb; font-weight: 700; margin-bottom: 1rem">
+      Frequently Asked Questions
+    </h4>
+
+    <div style="line-height: 1.6; margin-bottom: 2rem">
+      <strong>How do I reset my password?</strong>
+      <p>
+        Tap 'Library User' login screen and tap 'Forgot Password?' to reset.
+      </p>
+
+      <strong>How do I contact support?</strong>
+      <p>
+        Email
+        <a href="mailto:maserinjames50@hotmail.com"
+          >librarylink.support@hotmail.com</a
+        >. or visit our app
+        <a href="#" style="color: #2563eb; font-weight: 600">Library Link</a>.
+      </p>
+
+      <strong>How can I borrow a book?</strong>
+      <p>
+        Search for a book, tap 'Add to Book Cart' see if it's available, and
+        then tap 'Borrow' to borrow a book.
+      </p>
+
+      <strong>Where can I view my borrowed items?</strong>
+      <p>
+        Go to the Borrowing History' section to view all your borrowed books
+        along with reserve books.
+      </p>
+
+      <strong>How do I search for books?</strong>
+      <p>
+        Go to the 'Library' and Tap the search bar at the top of the home screen
+        to find books by title, author, ISBN, published data, or publisher.
+      </p>
+
+      <strong>Is there a limit to how many books I can borrow?</strong>
+      <p>Yes, users can borrow up to 5 books at a time.</p>
+    </div>
+
+    <p
+      class="text-center mt-5"
+      style="font-style: italic; color: #555; font-size: 0.875rem"
+    >
+      Thank you for using Library Link!
+    </p>
+  </div>
 </div>
 {% endblock %}

@@ -190,7 +190,7 @@ class BookingCartAdmin(admin.ModelAdmin):
 admin.site.register(BookingCart, BookingCartAdmin)
 
 class BorrowedBookAdmin(admin.ModelAdmin):
-    list_display = ('user', 'book', 'borrowed_at',)
+    list_display = ('user', 'book', 'borrowed_at', 'returned_at')
     search_fields = ('user__email', 'book__title')
     list_filter = ('borrowed_at',)
     ordering = ('-borrowed_at',)

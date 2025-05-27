@@ -35,7 +35,6 @@
           <option value="All">All</option>
           <option value="Borrowed" class="bg-warning">Borrowed</option>
           <option value="Returned" class="bg-success">Returned</option>
-          <option value="Overdue" class="bg-danger">Overdue</option>
         </select>
       </div>
       <hr>
@@ -47,7 +46,6 @@
             <p class="fw-semibold">📖 Book Title: "{{ tx.display_title }}"</p>
             <p>👤 Borrower: {{ tx.borrower }}</p>
             <p>📅 Borrow Date: {{ tx.borrow_date }}</p>
-            <p>🗓️ Due Date: {{ tx.due_date }}</p>
             <button class="btn btn-sm {% if tx.status == 'overdue' %}btn-danger{% elif tx.status == 'returned' %}btn-success{% elif tx.status == 'borrowed' %}btn-warning{% else %}btn-secondary{% endif %}" onclick="showStatusMessage('{{ tx.status }}')">
               {{ tx.status|title }}
             </button>

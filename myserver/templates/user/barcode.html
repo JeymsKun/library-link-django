@@ -6,39 +6,186 @@
 <!-- Sidebar -->
 {% include 'user/components/drawer.html' %}
 
+<style>
+  body,
+  input,
+  button {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  }
+
+  .scanner-container {
+    max-width: 700px;
+    margin: 5rem auto 3rem;
+    padding: 2.5rem 2rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
+  }
+
+  .scanner-container h3 {
+    font-weight: 600;
+    font-size: 1.9rem;
+    margin-bottom: 2rem;
+    letter-spacing: 0.03em;
+  }
+
+  #error-alert {
+    transition: opacity 0.3s ease;
+    font-weight: 600;
+  }
+
+  #video {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgb(0 0 0 / 0.12);
+    height: 400px;
+    background: #000;
+    position: relative;
+  }
+
+  #toggleScan {
+    margin-top: 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  #toggleScan:hover {
+    box-shadow: 0 8px 15px rgb(59 130 246 / 0.3);
+  }
+
+  .manual-input-group {
+    margin-top: 2rem;
+  }
+
+  .manual-input-group label {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+    display: block;
+  }
+
+  .manual-input-group input {
+    border: 1.5px solid #ddd;
+    border-radius: 8px 0 0 8px;
+    padding: 0.6rem 1rem;
+    font-size: 1.05rem;
+    transition: border-color 0.25s ease;
+  }
+
+  .manual-input-group input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 8px rgb(59 130 246 / 0.3);
+  }
+
+  .manual-input-group button {
+    border-radius: 0 8px 8px 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .manual-input-group button:hover {
+    box-shadow: 0 6px 12px rgb(107 114 128 / 0.25);
+  }
+
+  #bookInfoModal .modal-content {
+    border-radius: 14px;
+  }
+
+  #bookInfoModal img {
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.15);
+  }
+
+  #bookInfoModal h5 {
+    font-weight: 700;
+    font-size: 1.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  #bookInfoModal p {
+    font-size: 1rem;
+    color: #6b7280;
+  }
+
+  #bookInfoModal button {
+    border-radius: 8px;
+    font-weight: 600;
+  }
+
+  #video video {
+    filter: brightness(1.3) contrast(1.2);
+  }
+
+  #video {
+    position: relative;
+  }
+
+  #guideOverlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 30%;
+    border: 3px dashed #3b82f6;
+    border-radius: 12px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-sizing: border-box;
+    z-index: 10;
+  }
+</style>
+
 <!-- Main Container -->
-<div class="container py-5 mt-4" style="padding-top: 100px; max-width: 700px">
-  <h3 class="text-center fw-bold mb-4 mt-6">📷 Scan the Barcode</h3>
+<div class="scanner-container">
+  <h3 class="text-center">📷 Scan the Barcode</h3>
 
   <!-- Error Message -->
-  <div id="error-alert" class="alert alert-danger d-none text-center"></div>
+  <div
+    id="error-alert"
+    class="alert alert-danger d-none text-center"
+    role="alert"
+  ></div>
 
   <!-- Video Scanner -->
   <div class="text-center mb-4">
-    <video
-      id="video"
-      autoplay
-      playsinline
-      class="w-100 rounded shadow-sm"
-      style="max-height: 400px"
-    ></video>
-    <canvas id="canvas" style="display: none"></canvas>
-    <button id="toggleScan" class="btn btn-primary mt-3 w-100">
-      Stop Scanning
+    <div id="video">
+      <div id="guideOverlay"></div>
+    </div>
+
+    <button id="toggleScan" class="btn btn-primary w-100">Stop Scanning</button>
+    <button
+      id="toggleTorch"
+      class="btn btn-warning w-100 mt-2 d-none"
+      title="Toggle flashlight"
+    >
+      Turn On Flashlight
+    </button>
+  </div>
+
+  <div class="d-flex justify-content-center gap-2 my-2">
+    <button id="zoomInBtn" class="btn btn-outline-secondary" title="Zoom In">
+      ➕ Zoom In
+    </button>
+    <button id="zoomOutBtn" class="btn btn-outline-secondary" title="Zoom Out">
+      ➖ Zoom Out
     </button>
   </div>
 
   <!-- Manual Barcode Input -->
-  <div class="mb-4">
-    <label for="manualBarcode" class="form-label"
-      >Or enter barcode manually:</label
-    >
+  <div class="manual-input-group">
+    <label for="manualBarcode">Or enter barcode manually:</label>
     <div class="input-group">
       <input
         type="text"
         id="manualBarcode"
         class="form-control"
         placeholder="Enter barcode"
+        aria-label="Manual barcode input"
       />
       <button
         class="btn btn-secondary"
@@ -49,139 +196,360 @@
     </div>
   </div>
 
-  <!-- Book Info Card -->
+  <!-- Book Info Modal -->
   <div
-    id="bookInfo"
-    class="card d-none mx-auto shadow-sm"
-    style="max-width: 100%"
+    id="bookInfoModal"
+    class="modal fade"
+    tabindex="-1"
+    aria-hidden="true"
+    aria-labelledby="bookInfoModalLabel"
   >
-    <img
-      id="coverImage"
-      class="card-img-top"
-      alt="Book Cover"
-      style="height: 300px; object-fit: cover"
-    />
-    <div class="card-body">
-      <h5 id="bookTitle" class="card-title fw-bold"></h5>
-      <p id="bookAuthor" class="card-text"></p>
-      <p id="bookGenre" class="card-text"></p>
-      <p id="bookISBN" class="card-text"></p>
-      <p id="bookPublished" class="card-text"></p>
-      <p id="bookDescription" class="card-text small text-muted"></p>
-      <div class="d-grid">
-        <button class="btn btn-success mt-3" onclick="resetScanner()">
-          Scan Another
-        </button>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg">
+        <div class="modal-body text-center">
+          <img
+            id="coverImage"
+            class="img-fluid mb-3"
+            alt="Book Cover"
+            style="height: 250px; object-fit: cover"
+          />
+          <h5 id="bookTitle"></h5>
+          <p id="bookAuthor"></p>
+          <div id="borrowInfo" class="mb-3"></div>
+          <div class="d-grid gap-2 mt-4">
+            <button class="btn btn-primary" onclick="goToDetails()">
+              About This Book
+            </button>
+            <button
+              class="btn btn-outline-secondary"
+              data-bs-dismiss="modal"
+              onclick="resetScanner()"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- JSQR Scanner Script -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-<script>
-  let scanning = true;
-  let stream = null;
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const context = canvas.getContext("2d");
-  const toggleBtn = document.getElementById("toggleScan");
+  <!-- QuaggaJS script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
-  function startCamera() {
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
-      .then((mediaStream) => {
-        stream = mediaStream;
-        video.srcObject = stream;
-        video.play();
-        scanning = true;
-        toggleBtn.textContent = "Stop Scanning";
-        requestAnimationFrame(scan);
-      })
-      .catch((err) => showError("Camera access denied or not available."));
-  }
+  <script>
+    let bookInfoModal;
+    let currentBookId = null;
+    let scanning = false;
+    let currentStreamTrack = null;
+    let torchOn = false;
+    let currentZoom = 1;
+    let minZoom = 1;
+    let maxZoom = 3;
 
-  function stopCamera() {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+    function updateZoom(newZoom) {
+      if (!currentStreamTrack) return;
+      currentZoom = Math.min(maxZoom, Math.max(minZoom, newZoom));
+
+      currentStreamTrack
+        .applyConstraints({
+          advanced: [{ zoom: currentZoom }],
+        })
+        .catch((e) => {
+          console.warn("Zoom not supported or error:", e);
+        });
     }
-    scanning = false;
-    video.srcObject = null;
-    toggleBtn.textContent = "Start Scanning";
-    video.poster = "";
-    video.classList.add("bg-secondary");
-    video.innerHTML = "<div class='text-white p-4'>Camera is off</div>";
-  }
 
-  toggleBtn.onclick = () => {
-    if (scanning) {
-      stopCamera();
-    } else {
-      startCamera();
-    }
-  };
+    function initZoomCapabilities() {
+      if (!currentStreamTrack) {
+        console.log("No currentStreamTrack available for zoom");
+        document.getElementById("zoomInBtn").disabled = true;
+        document.getElementById("zoomOutBtn").disabled = true;
+        return;
+      }
 
-  function scan() {
-    if (!scanning) return;
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, canvas.width, canvas.height);
-      if (code) {
-        fetchBook(code.data);
-        stopCamera();
+      const capabilities = currentStreamTrack.getCapabilities();
+      console.log("Camera capabilities:", capabilities);
+
+      if ("zoom" in capabilities) {
+        minZoom = capabilities.zoom.min || 1;
+        maxZoom = capabilities.zoom.max || 3;
+        currentZoom = minZoom;
+
+        document.getElementById("zoomInBtn").disabled = false;
+        document.getElementById("zoomOutBtn").disabled = false;
+      } else {
+        document.getElementById("zoomInBtn").disabled = true;
+        document.getElementById("zoomOutBtn").disabled = true;
+        console.log("Zoom not supported by this camera.");
       }
     }
-    requestAnimationFrame(scan);
-  }
 
-  function fetchBook(barcode) {
-    if (!barcode) {
-      showError("Please enter a barcode.");
-      return;
+    function toggleTorch() {
+      if (!currentStreamTrack) return;
+      const capabilities = currentStreamTrack.getCapabilities();
+      if (!capabilities.torch) {
+        alert("Torch not supported on this device.");
+        return;
+      }
+      torchOn = !torchOn;
+      currentStreamTrack.applyConstraints({
+        advanced: [{ torch: torchOn }],
+      });
+      document.getElementById("toggleTorch").textContent = torchOn
+        ? "Turn Off Flashlight"
+        : "Turn On Flashlight";
     }
-    fetch(`/api/book/${barcode}/`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Book not found.");
-        return res.json();
+
+    function showError(msg) {
+      const alert = document.getElementById("error-alert");
+      alert.textContent = msg;
+      alert.classList.remove("d-none");
+      setTimeout(() => alert.classList.add("d-none"), 4000);
+    }
+
+    function fetchBook(barcode) {
+      if (!barcode) {
+        showError("Please enter a barcode.");
+        return;
+      }
+      fetch(`/api/book/${barcode}/`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Book not found.");
+          return res.json();
+        })
+        .then((data) => showBookInfo(data))
+        .catch((err) => showError(err.message));
+    }
+
+    function markAsReturned(bookId) {
+      if (!bookId) {
+        alert("Invalid book ID.");
+        return;
+      }
+
+      fetch(`/api/book/${bookId}/return/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
       })
-      .then((data) => showBookInfo(data))
-      .catch((err) => showError(err.message));
-  }
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to mark as returned.");
+          return res.json();
+        })
+        .then((data) => {
+          showBookInfo(data);
+          alert("Book marked as returned.");
+        })
+        .catch((err) => {
+          console.error(err);
+          alert("Error: " + err.message);
+        });
+    }
 
-  function showBookInfo(data) {
-    document.getElementById("error-alert").classList.add("d-none");
-    document.getElementById("bookInfo").classList.remove("d-none");
-    document.getElementById("coverImage").src =
-      data.cover_url || "{% static 'default-book-cover.jpg' %}";
-    document.getElementById("bookTitle").textContent = data.title;
-    document.getElementById("bookAuthor").textContent = "By: " + data.author;
-    document.getElementById("bookGenre").textContent = "Genre: " + data.genre;
-    document.getElementById("bookISBN").textContent =
-      "ISBN: " + (data.isbn || "N/A");
-    document.getElementById("bookPublished").textContent =
-      "Published: " + new Date(data.published_date).toDateString();
-    document.getElementById("bookDescription").textContent = data.description;
-  }
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
 
-  function showError(msg) {
-    const alert = document.getElementById("error-alert");
-    alert.textContent = msg;
-    alert.classList.remove("d-none");
-    setTimeout(() => alert.classList.add("d-none"), 4000);
-  }
+          if (cookie.startsWith(name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
 
-  function resetScanner() {
-    document.getElementById("bookInfo").classList.add("d-none");
-    document.getElementById("manualBarcode").value = "";
-    startCamera();
-  }
+    function showBookInfo(data) {
+      document.getElementById("error-alert").classList.add("d-none");
+      currentBookId = data.id;
+      const coverUrl =
+        data.cover_url && data.cover_url.trim() !== ""
+          ? data.cover_url
+          : "{% static 'default-book-cover.jpg' %}";
 
-  window.addEventListener("DOMContentLoaded", () => {
-    startCamera();
-  });
-</script>
+      document.getElementById("coverImage").src = coverUrl;
+      document.getElementById("bookTitle").textContent = data.title;
+      document.getElementById("bookAuthor").textContent = "By: " + data.author;
 
+      const borrowInfoDiv = document.getElementById("borrowInfo");
+      borrowInfoDiv.innerHTML = "";
+
+      if (data.borrowed) {
+        borrowInfoDiv.innerHTML = `
+      <p><strong>Currently borrowed by:</strong> ${
+        data.borrowed_by.full_name
+      } (${data.borrowed_by.email})</p>
+      <p><strong>Borrowed at:</strong> ${new Date(
+        data.borrowed_at
+      ).toLocaleString()}</p>
+      <button class="btn btn-success" id="markReturnedBtn">Mark as Returned</button>
+    `;
+
+        document.getElementById("markReturnedBtn").onclick = () =>
+          markAsReturned(data.id);
+      } else {
+        borrowInfoDiv.innerHTML = `<p>This book is currently available.</p>`;
+      }
+
+      bookInfoModal.show();
+    }
+
+    function goToDetails() {
+      if (currentBookId) {
+        window.location.href = `/user/library/book/${currentBookId}/?from=scanning`;
+      } else {
+        alert("No book selected.");
+      }
+    }
+
+    function resetScanner() {
+      document.getElementById("manualBarcode").value = "";
+      bookInfoModal.hide();
+      startScanner();
+    }
+
+    function isValidBarcode(code) {
+      return /^[0-9]{8,13}$/.test(code);
+    }
+
+    function onBarcodeDetected(result) {
+      if (result && result.codeResult && result.codeResult.code) {
+        const code = result.codeResult.code;
+        if (!isValidBarcode(code)) {
+          console.log("Detected code is not a valid barcode:", code);
+          return;
+        }
+        stopScanner();
+        fetchBook(code);
+      }
+    }
+
+    function startScanner() {
+      if (scanning) return;
+
+      scanning = true;
+      document.getElementById("toggleScan").textContent = "Stop Scanning";
+
+      Quagga.init(
+        {
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector("#video"),
+            constraints: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            area: {
+              top: "0%",
+              right: "0%",
+              left: "0%",
+              bottom: "0%",
+            },
+          },
+          decoder: {
+            readers: [
+              "code_128_reader",
+              "ean_reader",
+              "ean_8_reader",
+              "upc_reader",
+              "upc_e_reader",
+            ],
+          },
+          locate: true,
+        },
+        function (err) {
+          if (err) {
+            console.error(err);
+            showError("Camera initialization failed.");
+            scanning = false;
+            document.getElementById("toggleScan").textContent =
+              "Start Scanning";
+            return;
+          }
+          Quagga.start();
+
+          const stream = Quagga.CameraAccess.getActiveStream();
+          if (stream) {
+            currentStreamTrack = stream.getVideoTracks()[0];
+            initZoomCapabilities();
+
+            const toggleTorchBtn = document.getElementById("toggleTorch");
+            if (currentStreamTrack.getCapabilities().torch) {
+              toggleTorchBtn.classList.remove("d-none");
+            }
+          } else {
+            showError("Could not access camera video track.");
+          }
+        }
+      );
+
+      Quagga.onDetected(onBarcodeDetected);
+    }
+
+    function stopScanner() {
+      if (!scanning) return;
+
+      Quagga.offDetected(onBarcodeDetected);
+      Quagga.stop();
+      scanning = false;
+
+      document.getElementById("toggleScan").textContent = "Start Scanning";
+
+      const videoContainer = document.getElementById("video");
+      videoContainer.innerHTML = "";
+      currentStreamTrack = null;
+
+      document.getElementById("zoomInBtn").disabled = true;
+      document.getElementById("zoomOutBtn").disabled = true;
+    }
+
+    function onBarcodeDetected(result) {
+      if (result && result.codeResult && result.codeResult.code) {
+        const code = result.codeResult.code;
+        if (!isValidBarcode(code)) {
+          console.log("Detected code is not a valid barcode:", code);
+          return;
+        }
+        stopScanner();
+        fetchBook(code);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      bookInfoModal = new bootstrap.Modal(
+        document.getElementById("bookInfoModal")
+      );
+      startScanner();
+
+      document.getElementById("toggleScan").onclick = () => {
+        if (scanning) {
+          stopScanner();
+        } else {
+          startScanner();
+        }
+      };
+
+      document.getElementById("zoomInBtn").onclick = () => {
+        console.log("Zoom In clicked");
+        updateZoom(currentZoom + 0.1);
+      };
+
+      document.getElementById("zoomOutBtn").onclick = () => {
+        console.log("Zoom Out clicked");
+        updateZoom(currentZoom - 0.1);
+      };
+
+      document.getElementById("toggleTorch").onclick = () => {
+        toggleTorch();
+      };
+    });
+  </script>
+</div>
 {% endblock %}

@@ -42,13 +42,17 @@ class BorrowedBook(models.Model):
     user = models.ForeignKey(LibraryUser, on_delete=models.CASCADE, related_name='borrowed_books')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='borrowed_instances')
     borrowed_at = models.DateTimeField(default=timezone.now)
+    returned_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('user', 'book')
         ordering = ['-borrowed_at']
 
     def __str__(self):
         return f"{self.user.email} borrowed {self.book.title}"
+    
+    @property
+    def is_returned(self):
+        return self.returned_at is not None
 
 class ReservedBook(models.Model):
     STATUS_CHOICES = [

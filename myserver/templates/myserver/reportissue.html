@@ -1,9 +1,78 @@
-{% extends "base.html" %} {% load static %} {% block title %}Repor Issue |
+{% extends "base.html" %} {% load static %} {% block title %}Report Issue |
 Library Link{% endblock %} {% block content %}
-<div
-  class="min-vh-100 bg-light d-flex flex-column px-3 py-4"
-  style="background-color: #e6f4fb !important"
->
-  <h3>Unavailable!</h3>
+<div class="min-vh-100 d-flex flex-column px-3 py-4 bg-white">
+  <!-- Header -->
+  <div class="d-flex align-items-center mb-4" style="padding: 0 6%">
+    <a
+      href="javascript:history.back()"
+      style="margin-right: 1rem; text-decoration: none"
+    >
+      <i
+        class="fas fa-arrow-left"
+        style="font-size: 1.75rem; color: #3b82f6"
+      ></i>
+    </a>
+  </div>
+
+  <!-- Flash Message -->
+  {% if messages %}
+  <div class="mx-auto mb-4" style="max-width: 800px; padding: 0 6%">
+    {% for message in messages %}
+    <div
+      class="alert alert-{{ message.tags }} shadow-sm"
+      role="alert"
+      style="font-size: 0.95rem"
+    >
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Report Form -->
+  <div class="mx-auto" style="max-width: 800px; padding: 0 6% 5rem">
+    <p class="mb-3" style="font-size: 1rem; color: #555">
+      If you encounter any bugs or issues, please describe them below so we can
+      improve your experience.
+    </p>
+
+    <form method="post" action="{% url 'report_issue' %}">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="email" class="form-label" style="font-weight: 600"
+          >Your Email (optional)</label
+        >
+        <input
+          type="email"
+          class="form-control"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div class="mb-3">
+        <label for="message" class="form-label" style="font-weight: 600"
+          >Issue Description</label
+        >
+        <textarea
+          class="form-control"
+          id="message"
+          name="message"
+          rows="6"
+          placeholder="Describe the issue in detail..."
+          required
+        ></textarea>
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-primary"
+        style="background-color: #3b82f6; border-color: #3b82f6"
+      >
+        Submit Issue
+      </button>
+    </form>
+  </div>
 </div>
 {% endblock %}

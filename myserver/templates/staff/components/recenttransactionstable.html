@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <div class="table-responsive">
+    <div id="activityTableWrapper" class="table-responsive">
       <table class="table table-bordered table-hover">
         <thead class="table-light sticky-top">
           <tr>
@@ -56,7 +56,7 @@
             <td class="text-center text-truncate" style="max-width: 180px">
               {{ activity.user.email }}
             </td>
-            <td class="text-center">{{ activity.user.get_full_name }}</td>
+            <td class="text-center">{{ activity.user.full_name }}</td>
             <td class="text-center">{{ activity.status }}</td>
           </tr>
           <tr class="collapse-row d-none" id="detail-{{ forloop.counter }}">
@@ -104,6 +104,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    // Row click toggles detail
     document.querySelectorAll(".cursor-pointer").forEach((row) => {
       row.addEventListener("click", () => {
         const index = row.dataset.index;
@@ -117,6 +118,7 @@
       });
     });
 
+    // Sorting logic
     document
       .getElementById("sortSelect")
       .addEventListener("change", function () {
@@ -140,6 +142,16 @@
           container.appendChild(detail);
         });
       });
+
+    // Enable vertical scroll if 6+ rows
+    const rowCount = document.querySelectorAll(
+      "#activityRows tr.cursor-pointer"
+    ).length;
+    if (rowCount >= 6) {
+      const wrapper = document.getElementById("activityTableWrapper");
+      wrapper.style.maxHeight = "500px"; // Adjust height as needed
+      wrapper.style.overflowY = "auto";
+    }
   });
 </script>
 
