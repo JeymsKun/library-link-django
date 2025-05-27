@@ -10,7 +10,7 @@ class GenreSerializer(serializers.ModelSerializer):
 class LibraryUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = LibraryUser
-        fields = ['id', 'email', 'full_name', 'is_active']
+        fields = ['id', 'email', 'full_name', 'id_number', 'is_active']
 
 class LibraryUserTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -41,6 +41,7 @@ class LibraryUserTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'id': user.id,
                 'email': user.email,
                 'full_name': user.full_name,
+                'id_number': user.id_number,
                 'is_active': user.is_active,
             }
         }
@@ -60,6 +61,7 @@ class MobileTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'id': user.id,
                 'email': user.email,
                 'full_name': user.full_name,
+                'id_number': user.id_number,
                 'is_active': user.is_active,
             }
         })

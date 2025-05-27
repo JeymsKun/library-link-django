@@ -1,6 +1,6 @@
 # myDjangoAdmin/urls.py
 from django.urls import path
-from .views import LibraryUserTokenObtainPairView, MeView, UserPendingBooksAPIView, UserRecentViewsAPIView, BookDetailAPIView, UserBookDetailAPIView, update_last_seen, LibraryUserTokenRefreshView, UserFavoriteBooksAPIView, book_by_barcode, api_root, genre_list, books_by_genre, UserBookingCartAPIView, borrow_book, reserve_book
+from .views import LibraryUserTokenObtainPairView, MeView, UserPendingBooksAPIView, UserRecentViewsAPIView, BookDetailAPIView, UserBookDetailAPIView, update_last_seen, LibraryUserTokenRefreshView, UserFavoriteBooksAPIView, book_by_barcode, api_root, genre_list, books_by_genre, UserBookingCartAPIView, borrow_book, reserve_book, user_borrowing_history
 from myserver.views import forgot_password_request_mobile, reset_password_mobile, verify_otp_mobile, signup_user
 
 urlpatterns = [
@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/token/', LibraryUserTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', LibraryUserTokenRefreshView.as_view(), name='token_refresh'),
     path('books/barcode/<str:barcode>/', book_by_barcode, name='book-by-barcode'),
+    path('user/<int:user_id>/history/', user_borrowing_history, name='user-borrowing-history'),
     path('user/<int:user_id>/recent-views/', UserRecentViewsAPIView.as_view(), name='user-recent-views'),
     path('user/<int:user_id>/pending-books/', UserPendingBooksAPIView.as_view(), name='user-pending-books'),
     path('user/<int:user_id>/booking-cart/', UserBookingCartAPIView.as_view(), name='user-booking-cart'),

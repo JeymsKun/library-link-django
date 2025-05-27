@@ -24,6 +24,38 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.http import JsonResponse
 from .serializers import GenreSerializer
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_borrowing_history(request, user_id):
+    if request.user.id != user_id:
+        return Response({'detail': 'Forbidden'}, status=403)
+
+    borrowed = BorrowedBook.objects.filter(user_id=user_id)
+    reserved = ReservedBook.objects.filter(user_id=user_id)
+
+    history = []
+
+    for item in borrowed:
+        history.append({
+            'title': item.book.title,
+            'author': item.book.author,  
+            'activity_date': item.borrowed_at,
+            'tag': 'Borrowed',
+        })
+
+    for item in reserved:
+        history.append({
+            'title': item.book.title,
+            'author': item.book.author,  
+            'activity_date': item.reserved_at,
+            'tag': 'Reserved',
+        })
+
+    history.sort(key=lambda x: x['activity_date'], reverse=True)
+
+    return Response(history)
+
+
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def borrow_book(request, user_id):
