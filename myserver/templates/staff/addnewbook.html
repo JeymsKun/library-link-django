@@ -5,6 +5,8 @@
 <!-- Sidebar -->
 {% include 'staff/components/drawer.html' %}
 
+{% load custom_filters %}
+
 <!-- Main content -->
 <div class="container-fluid mt-4" style="padding-top: 70px;">
   <div class="row justify-content-center">
@@ -25,6 +27,7 @@
             name="title"
             required
             placeholder="Enter book title"
+            value="{{ book.title|default_if_none:'' }}"
           />
         </div>
 
@@ -38,6 +41,7 @@
             name="author"
             required
             placeholder="Enter author's name"
+            value="{{ book.author|default_if_none:'' }}"
           />
         </div>
 
@@ -63,6 +67,7 @@
             id="isbn"
             name="isbn"
             placeholder="e.g. 978-3-16-148410-0"
+            value="{{ book.isbn|default_if_none:'' }}"
           />
         </div>
 
@@ -76,6 +81,7 @@
             name="publisher"
             required
             placeholder="Enter publisher name"
+            value="{{ book.publisher|default_if_none:'' }}"
           />
         </div>
 
@@ -87,6 +93,7 @@
             class="form-control"
             id="publishedDate"
             name="published_date"
+            value="{{ book.published_date|date:'Y-m-d' }}"
           />
         </div>
 
@@ -101,6 +108,7 @@
             name="copies"
             required
             placeholder="e.g. 5"
+            value="{{ book.copies|default_if_none:'' }}"
           />
         </div>
 
@@ -113,24 +121,25 @@
             accept="image/*"
             id="coverImage"
             name="cover_image"
-            required
+            {% if not book %}required{% endif %}
             onchange="previewCoverImage(this)"
           />
+
           <div
             id="coverPlaceholderContainer"
-            class="d-flex flex-column align-items-center justify-content-center mt-3 border rounded p-3 bg-white"
-            style="min-height: 130px; display: none"
+            class="mt-3 border rounded p-3 bg-white {% if book.cover_image %}d-flex{% else %}d-none{% endif %} flex-column align-items-center justify-content-center"
+            style="min-height: 130px;"
           >
-            <small class="text-muted text-center"
-              >Preview of the book cover.</small
-            >
+            <small class="text-muted text-center">Preview of the book cover.</small>
             <img
               id="coverPreview"
+              src="{% if book.cover_image %}{{ book.cover_image.url }}{% endif %}"
               class="img-fluid mt-2 mx-auto d-block"
               style="max-height: 200px"
             />
           </div>
         </div>
+
 
         <!-- Extra Images -->
         <div class="mb-3">
@@ -148,11 +157,25 @@
           <!-- Optional Image Placeholder Preview Box -->
           <div
             id="imagePlaceholderContainer"
-            class="d-flex flex-column justify-content-center align-items-center mt-3 border rounded p-3 bg-white text-center"
-            style="min-height: 130px; display: none"
+            class="mt-3 border rounded p-3 bg-white text-center {% if book.extra_image_1 or book.extra_image_2 or book.extra_image_3 or book.extra_image_4 or book.extra_image_5 %}d-flex{% else %}d-none{% endif %} flex-column justify-content-center align-items-center"
+            style="min-height: 130px;"
           >
             <small class="text-muted">Maximum of 5 images allowed.</small>
-            <div id="imagePreview" class="row mt-2 w-100"></div>
+            <div id="imagePreview" class="row mt-2 w-100">
+              {% for i in "12345" %}
+                {% with image=book|get_extra_image:i %}
+                  {% if image %}
+                    <div class="col-4 col-md-3 mb-3 position-relative">
+                      <img
+                        src="{{ image.url }}"
+                        class="img-thumbnail"
+                        style="height: 100px"
+                      />
+                    </div>
+                  {% endif %}
+                {% endwith %}
+              {% endfor %}
+            </div>
           </div>
         </div>
 
@@ -166,6 +189,7 @@
             name="barcode_code"
             readonly
             placeholder="Barcode will be generated automatically from the title"
+            value="{{ book.barcode_code|default_if_none:'' }}"
           />
           <input
             type="file"
@@ -212,7 +236,7 @@
             rows="3"
             name="description"
             placeholder="Write a brief description of the book"
-          ></textarea>
+          >{{ book.description|default_if_none:'' }}</textarea>
         </div>
 
         <!-- Buttons -->
@@ -225,6 +249,24 @@
       </form>
     </div>
   </div>
+
+  {% if not book %}
+    <script>
+      document.getElementById("title").addEventListener("input", function () {
+        const title = this.value.trim();
+
+        if (title.length === 0) {
+          document.getElementById("barcodeCode").value = "";
+          document.getElementById("barcodeContainer").style.display = "none";
+          return;
+        }
+
+        const code = `${title.slice(0, 3).toUpperCase()}-${Date.now()}`;
+        document.getElementById("barcodeCode").value = code;
+        generateBarcode(code);
+      });
+    </script>
+    {% endif %}
 
   <!-- JavaScript for preview and barcode -->
   <script>
@@ -285,20 +327,6 @@
       document.getElementById("downloadBarcode").style.display = "none";
       document.getElementById("imageInput").value = "";
     }
-
-    document.getElementById("title").addEventListener("input", function () {
-      const title = this.value.trim();
-
-      if (title.length === 0) {
-        document.getElementById("barcodeCode").value = "";
-        document.getElementById("barcodeContainer").style.display = "none";
-        return;
-      }
-
-      const code = `${title.slice(0, 3).toUpperCase()}-${Date.now()}`;
-      document.getElementById("barcodeCode").value = code;
-      generateBarcode(code);
-    });
 
     function previewCoverImage(input) {
       const file = input.files[0];

@@ -512,6 +512,69 @@ def staff_addbook(request):
     return render(request, 'staff/addnewbook.html', {'form': form, 'genres': genres, 'appbar_title': 'Add New Book'})
 
 @staff_required
+def add_or_update_book(request, book_id=None):
+    if book_id:
+        book = get_object_or_404(Book, id=book_id)
+    else:
+        book = None
+
+    genres = Genre.objects.all()
+
+    if request.method == 'POST':
+        form = BookForm(request.POST, request.FILES, instance=book)
+        if form.is_valid():
+            book = form.save(commit=False)
+
+            for i in range(1, 6):
+                setattr(book, f'extra_image_{i}', None)
+
+            extra_images = request.FILES.getlist('extra_images')
+            for index, image in enumerate(extra_images[:5], start=1):
+                setattr(book, f'extra_image_{index}', image)
+
+            book.save()
+
+            messages.success(request, "Book updated successfully.")
+            return redirect('staff_booklist')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = BookForm(instance=book)
+
+    return render(request, 'staff/addnewbook.html', {
+        'form': form,
+        'book': book,
+        'genres': genres,
+        'appbar_title': 'Update Book' if book else 'Add New Book',
+    })
+
+@staff_required
+def delete_book(request, book_id):
+    book = get_object_or_404(Book, id=book_id)
+
+    if book.cover_image and os.path.isfile(book.cover_image.path):
+        os.remove(book.cover_image.path)
+
+    for i in range(1, 6):
+        extra_image = getattr(book, f'extra_image_{i}')
+        if extra_image and os.path.isfile(extra_image.path):
+            os.remove(extra_image.path)
+
+    if book.barcode_image and os.path.isfile(book.barcode_image.path):
+        os.remove(book.barcode_image.path)
+
+    RecentlyViewed.objects.filter(book=book).delete()
+    FavoriteBook.objects.filter(book=book).delete()
+    BookingCart.objects.filter(book=book).delete()
+    BorrowedBook.objects.filter(book=book).delete()
+    ReservedBook.objects.filter(book=book).delete()
+
+    book.delete()
+
+    messages.success(request, "Book and all related records deleted successfully.")
+    return redirect('staff_addbook')
+
+@staff_required
 def staff_barcode(request):
     return render(request, 'staff/barcode.html', { 'appbar_title': 'Barcode' })
 
